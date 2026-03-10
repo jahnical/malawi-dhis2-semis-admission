@@ -1,17 +1,18 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Form } from "react-final-form";
 import { Tooltip } from '@mui/material';
 import styles from './admissionActionsButtons.module.css'
 import ModalManager from '../modal/saveAdmission/ModalManager';
-import { useBuildForm, useGetSectionTypeLabel, useUrlParams, useShowAlerts, useCheckFilters } from 'dhis2-semis-functions';
+import { useBuildForm, useGetSectionTypeLabel, useUrlParams, useShowAlerts } from 'dhis2-semis-functions';
 import { D2I18n, Modules, TableDataRefetch } from 'dhis2-semis-types'
 import { IconAddCircle24, Button, ButtonStrip, IconUserGroup16, IconSearch24 } from "@dhis2/ui";
 import { ModalSearchAdmissionContent, DataExporter, DataImporter, CustomDropdown as DropdownButton, useSchoolCalendarKey } from 'dhis2-semis-components';
 import { formFields } from '../../utils/constants/form/admissionForm';
 import useGetSelectedKeys from '../../hooks/config/useGetSelectedKeys';
 import { useSetRecoilState } from 'recoil';
+import EnrollBulkModal, { SelectedStudent } from '../modal/enrollFromAdmission/EnrollBulkModal';
 
-function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: string }) {
+function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18n: D2I18n, baseUrl: string, selectedStudents?: SelectedStudent[] }) {
     const { urlParameters } = useUrlParams();
     const { sectionName } = useGetSectionTypeLabel();
     const schoolCalendar = useSchoolCalendarKey()
@@ -20,14 +21,14 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
     const [openSaveModal, setOpenSaveModal] = useState<boolean>(false)
     const { school: orgUnit, academicYear } = urlParameters;
     const [openSearchAdmission, setOpenSearchAdmission] = useState<boolean>(false);
+    const [openEnrollBulkModal, setOpenEnrollBulkModal] = useState<boolean>(false);
     const { formData } = useBuildForm({ dataStoreData, programData, module: Modules.Admission, schoolCalendar });
     const { hide, show } = useShowAlerts()
-    const { areAllSelected, getFilters } = useCheckFilters({ filters: (dataStoreData.filters.dataElements ?? []) as unknown as any })
-    const filters = [
-        academicYear !== null ? `${schoolCalendar?.academicYear}:in:${academicYear}` : null,
-        ...getFilters()
-    ].filter((filter): filter is string => filter !== null)
     const setRefetch = useSetRecoilState(TableDataRefetch);
+    const academicYearFilter = academicYear !== null
+        ? `${schoolCalendar?.academicYear}:in:${academicYear}`
+        : null;
+    const filters = [academicYearFilter].filter((f): f is string => f !== null);
 
 
     const showAlert = (error: any) => {
@@ -39,7 +40,7 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
         {
             label: <DataImporter
                 baseURL={baseUrl}
-                label={i18n.t('Enroll new {{section}}', {
+                label={i18n.t('Admit new {{section}}', {
                     section: `${i18n.t(sectionName)}s`,
                 })}
                 module={Modules.Admission}
@@ -84,7 +85,7 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                 sectionType={sectionName}
                 selectedSectionDataStore={dataStoreData}
                 empty={true}
-                stagesToExport={[dataStoreData.registration.programStage]}
+                stagesToExport={[]}
             />,
             divider: false,
             disabled: false,
@@ -103,11 +104,11 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                 sectionType={sectionName}
                 selectedSectionDataStore={dataStoreData}
                 empty={false}
-                stagesToExport={[dataStoreData.registration.programStage]}
+                stagesToExport={[]}
             />,
             divider: false,
             disabled: false,
-        }
+        },
     ];
 
     return (
@@ -135,7 +136,7 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                         <Button icon={<IconAddCircle24 />}>
                             <span className={styles.work_buttons_text}>
                                 {
-                                    i18n.t('Enroll {{section}}', {
+                                    i18n.t('Admit {{section}}', {
                                         section: `${i18n.t(sectionName)}`,
                                     })
                                 }
@@ -144,11 +145,26 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                     </span>
                 </Tooltip>
 
-                <Tooltip title={!areAllSelected() ? i18n.t("Please select all filters") : ""}>
+                {selectedStudents.length > 0 && (
+                    <Tooltip title="">
+                        <span>
+                            <Button
+                                icon={<IconUserGroup16 />}
+                                onClick={() => setOpenEnrollBulkModal(true)}
+                            >
+                                <span className={styles.work_buttons_text}>
+                                    {i18n.t('Enroll Selected ({{count}})', { count: selectedStudents.length })}
+                                </span>
+                            </Button>
+                        </span>
+                    </Tooltip>
+                )}
+
+                <Tooltip title={orgUnit === undefined || academicYear === undefined ? i18n.t("Please select an organisation unit and academic year") : ""}>
                     <span>
                         <DropdownButton
                             name={<span className={styles.work_buttons_text}>{i18n.t("Bulk admission")}</span> as unknown as string}
-                            disabled={!!(orgUnit == undefined || !areAllSelected() || academicYear == undefined)}
+                            disabled={!!(orgUnit == undefined || academicYear == undefined)}
                             icon={<IconUserGroup16 />}
                             options={admissionOptions}
                         />
@@ -165,7 +181,7 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                 formVariablesFields={formData}
                 initialValues={formInitialValues}
                 setFormInitialValues={setFormInitialValues}
-                formFields={formFields({ formFieldsData: formData, sectionName: sectionName! })}
+                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.addmissionDate })}
             />}
 
             {openSearchAdmission &&
@@ -179,6 +195,15 @@ function AdmissionActionsButtons({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: str
                     setFormInitialValues={(values: any) => setFormInitialValues(values)}
                 />
             }
+
+            {openEnrollBulkModal && (
+                <EnrollBulkModal
+                    i18n={i18n}
+                    open={openEnrollBulkModal}
+                    setOpen={setOpenEnrollBulkModal}
+                    selectedStudents={selectedStudents}
+                />
+            )}
         </div>
     )
 }

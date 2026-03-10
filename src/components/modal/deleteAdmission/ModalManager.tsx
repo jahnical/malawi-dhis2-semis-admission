@@ -38,7 +38,7 @@ const ModalManagerAdmissionDelete = (props: ModalManagerInterface) => {
         setLoadingDelete(true)
         await getTotalAdmission(trackedEntity)
             .then(async (totalAdmission: any) => {
-                const admissions: any[] = totalAdmission?.results?.admissions;
+                const admissions: any[] = totalAdmission?.results?.enrollments;
 
                 const deleteAction = admissions.length > 1 ? deleteAdmission(admission) : deleteTEI(trackedEntity);
                 await deleteAction

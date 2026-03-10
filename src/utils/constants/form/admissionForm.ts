@@ -47,9 +47,23 @@ const staticForm = () => {
   }
 }
 
-function formFields({ formFieldsData, sectionName }: { formFieldsData: any[], sectionName: string }) {
+function formFields({ formFieldsData, sectionName, admissionDateAttributeId }: { formFieldsData: any[], sectionName: string, admissionDateAttributeId?: string }) {
 
-  const [admissionDetails = [], studentsProfile = [], socioEconomicDetails = []] = formFieldsData;
+  const [studentAttributes = []] = formFieldsData;
+
+  // If a configured admission date attribute exists, use it in Admission Details
+  // and remove it from Student Profile to avoid duplication
+  const configuredAdmissionDateAttr = admissionDateAttributeId
+    ? studentAttributes.find((attr: any) => attr.id === admissionDateAttributeId)
+    : null;
+
+  const admissionDateField = configuredAdmissionDateAttr
+    ? { ...configuredAdmissionDateAttr, labelName: "Admission date", displayName: "Admission date", header: "Admission date", name: configuredAdmissionDateAttr.id }
+    : staticForm().admissionDate;
+
+  const filteredStudentAttributes = configuredAdmissionDateAttr
+    ? studentAttributes.filter((attr: any) => attr.id !== admissionDateAttributeId)
+    : studentAttributes;
 
   return [
     {
@@ -58,8 +72,7 @@ function formFields({ formFieldsData, sectionName }: { formFieldsData: any[], se
       visible: true,
       fields: [
         staticForm().registeringSchool,
-        ...admissionDetails,
-        staticForm().admissionDate
+        admissionDateField
       ]
     },
     {
@@ -67,15 +80,7 @@ function formFields({ formFieldsData, sectionName }: { formFieldsData: any[], se
       description: `${capitalizeString(sectionName)} personal details`,
       visible: true,
       fields: [
-        ...studentsProfile
-      ]
-    },
-    {
-      name: "Socio-economic Details",
-      description: `Details about the ${sectionName} socio-economic status`,
-      visible: Boolean(socioEconomicDetails.length),
-      fields: [
-        ...socioEconomicDetails
+        ...filteredStudentAttributes
       ]
     }
   ];

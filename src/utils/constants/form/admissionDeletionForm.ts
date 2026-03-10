@@ -49,14 +49,9 @@ const staticForm = () => {
 
 function admissionDeletionFormField({ formFieldsData, sectionName }: { formFieldsData: any[], sectionName: string }) {
 
-  const [admissionDetails = [], studentsProfile = [], socioEconomicDetails = []] = formFieldsData;
+  const [studentAttributes = []] = formFieldsData;
 
-
-  const updatedAdmissionData = admissionDetails.map((item: any) => {
-    return { ...item, disabled: true, required: false };
-  });
-
-  const updatedDataProfile = studentsProfile
+  const updatedDataProfile = studentAttributes
     .filter((item: any) => item?.searchable || item?.unique || item?.required)
     .map((item: any) => ({ ...item, disabled: true, required: false }));
 
@@ -66,13 +61,6 @@ function admissionDeletionFormField({ formFieldsData, sectionName }: { formField
       visible: true,
       fields: [
         ...updatedDataProfile
-      ]
-    },
-    {
-      name: "Admission Details",
-      visible: true,
-      fields: [
-        ...updatedAdmissionData,
       ]
     }
   ];

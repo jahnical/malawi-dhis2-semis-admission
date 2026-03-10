@@ -14,6 +14,10 @@ const WithHeaderBarLayout = ({ baseUrl }: { baseUrl: string }) => {
                     program={program}
                     schoolCalendar={schoolCalendar}
                     dataStoreValues={dataStoreData}
+                    headerItems={{
+                        hideDataStoreFilters: true,
+                        academicYearLabel: "Admission Year"
+                    }}
                 />
             }
         >
