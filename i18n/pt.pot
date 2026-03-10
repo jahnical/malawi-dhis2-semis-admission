@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: i18next-conv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1)\n"
+"POT-Creation-Date: 2025-10-30T13:06:36.981Z\n"
+"PO-Revision-Date: 2025-10-30T13:06:36.981Z\n"
+msgid "Unknown error"
+msgstr "Erro desconhecido"
+
+msgid "Enroll new {{section}}"
+msgstr "Inscrever novo {{section}}"
+
+msgid "Bulk Enrollment"
+msgstr "Inscrição em massa"
+
+msgid "Update existing {{section}}"
+msgstr "Atualizar {{section}} existente"
+
+msgid "Bulk Enrollment Update"
+msgstr "Atualização de inscrições em massa"
+
+msgid "Export Empty Template"
+msgstr "Exportar modelo vazio"
+
+msgid "Export Existing {{section}}"
+msgstr "Exportar {{section}} existente"
+
+msgid "Please select an organisation unit before"
+msgstr "Por favor, selecione uma unidade organizacional antes"
+
+msgid "Enroll {{section}}"
+msgstr "Inscrever {{section}}"
+
+msgid "Please select all filters"
+msgstr "Por favor, selecione todos os filtros"
+
+msgid "Bulk enrollment"
+msgstr "Inscrição em massa"
+
+msgid "Enrollment Deletion"
+msgstr "Eliminação de inscrição"
+
+msgid "Could not conclude the opertation."
+msgstr "Não foi possível concluir a operação."
+
+msgid "Operation concluded successfully"
+msgstr "Operação concluída com sucesso"
+
+msgid "Single {{section}} Enrollment {{mode}}"
+msgstr "Inscrição única de {{section}} {{mode}}"
+
+msgid "Update"
+msgstr "Atualizar"
+
+msgid "Edition"
+msgstr "Edição"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "SEMIS-Enrollment"
+msgstr "SEMIS-Inscrição"
+
+msgid "Follow the instructions to proceed"
+msgstr "Siga as instruções para continuar"
+
+msgid "Select the Organization unit you want to view data"
+msgstr "Selecione a unidade organizacional cuja informação deseja visualizar"
+
+msgid "Use global filters(Class, Grade and Academic Year)"
+msgstr "Use os filtros globais (Turma, Nível e Ano letivo)"
+
+msgid "Enrollments"
+msgstr "Inscrições"
+
+msgid "Staff"
+msgstr "Funcionário"
+
+msgid "Student"
+msgstr "Estudante"
+
+msgid "student"
+msgstr "estudante"
+
+msgid "staff"
+msgstr "funcionário"

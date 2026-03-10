@@ -1,0 +1,90 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: i18next-conv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1)\n"
+"POT-Creation-Date: 2025-10-30T13:06:36.981Z\n"
+"PO-Revision-Date: 2025-10-30T13:06:36.981Z\n"
+
+msgid "Unknown error"
+msgstr "Erreur inconnue"
+
+msgid "Enroll new {{section}}"
+msgstr "Inscrire un nouveau {{section}}"
+
+msgid "Bulk Enrollment"
+msgstr "Inscription en masse"
+
+msgid "Update existing {{section}}"
+msgstr "Mettre à jour le {{section}} existant"
+
+msgid "Bulk Enrollment Update"
+msgstr "Mise à jour des inscriptions en masse"
+
+msgid "Export Empty Template"
+msgstr "Exporter le modèle vide"
+
+msgid "Export Existing {{section}}"
+msgstr "Exporter le {{section}} existant"
+
+msgid "Please select an organisation unit before"
+msgstr "Veuillez sélectionner une unité organisationnelle avant"
+
+msgid "Enroll {{section}}"
+msgstr "Inscrire {{section}}"
+
+msgid "Please select all filters"
+msgstr "Veuillez sélectionner tous les filtres"
+
+msgid "Bulk enrollment"
+msgstr "Inscription en masse"
+
+msgid "Enrollment Deletion"
+msgstr "Suppression d’inscription"
+
+msgid "Could not conclude the opertation."
+msgstr "Impossible de terminer l’opération."
+
+msgid "Operation concluded successfully"
+msgstr "Opération terminée avec succès"
+
+msgid "Single {{section}} Enrollment {{mode}}"
+msgstr "Inscription unique de {{section}} {{mode}}"
+
+msgid "Update"
+msgstr "Mettre à jour"
+
+msgid "Edition"
+msgstr "Édition"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "SEMIS-Enrollment"
+msgstr "Inscription-SEMIS"
+
+msgid "Follow the instructions to proceed"
+msgstr "Suivez les instructions pour continuer"
+
+msgid "Select the Organization unit you want to view data"
+msgstr "Sélectionnez l’unité organisationnelle dont vous souhaitez voir les données"
+
+msgid "Use global filters(Class, Grade and Academic Year)"
+msgstr "Utilisez les filtres globaux (Classe, Niveau et Année académique)"
+
+msgid "Enrollments"
+msgstr "Inscriptions"
+
+msgid "Staff"
+msgstr "Personnel"
+
+msgid "Student"
+msgstr "Étudiant"
+
+msgid "student"
+msgstr "étudiant"
+
+msgid "staff"
+msgstr "personnel"

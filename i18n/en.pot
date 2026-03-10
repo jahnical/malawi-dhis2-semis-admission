@@ -1,0 +1,81 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: i18next-conv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"POT-Creation-Date: 2025-11-14T14:12:51.391Z\n"
+"PO-Revision-Date: 2025-11-14T14:12:51.391Z\n"
+
+msgid "Unknown error"
+msgstr "Unknown error"
+
+msgid "Enroll new {{section}}"
+msgstr "Enroll new {{section}}"
+
+msgid "Bulk Enrollment"
+msgstr "Bulk Enrollment"
+
+msgid "Update existing {{section}}"
+msgstr "Update existing {{section}}"
+
+msgid "Bulk Enrollment Update"
+msgstr "Bulk Enrollment Update"
+
+msgid "Export Empty Template"
+msgstr "Export Empty Template"
+
+msgid "Export Existing {{section}}"
+msgstr "Export Existing {{section}}"
+
+msgid "Please select an organisation unit before"
+msgstr "Please select an organisation unit before"
+
+msgid "Search by {{section}}"
+msgstr "Search by {{section}}"
+
+msgid "Enroll {{section}}"
+msgstr "Enroll {{section}}"
+
+msgid "Please select all filters"
+msgstr "Please select all filters"
+
+msgid "Bulk enrollment"
+msgstr "Bulk enrollment"
+
+msgid "Enrollment Deletion"
+msgstr "Enrollment Deletion"
+
+msgid "Could not conclude the opertation."
+msgstr "Could not conclude the opertation."
+
+msgid "Operation concluded successfully"
+msgstr "Operation concluded successfully"
+
+msgid "Single {{section}} Enrollment {{mode}}"
+msgstr "Single {{section}} Enrollment {{mode}}"
+
+msgid "Update"
+msgstr "Update"
+
+msgid "Edition"
+msgstr "Edition"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "SEMIS-Enrollment"
+msgstr "SEMIS-Enrollment"
+
+msgid "Follow the instructions to proceed"
+msgstr "Follow the instructions to proceed"
+
+msgid "Select the Organization unit you want to view data"
+msgstr "Select the Organization unit you want to view data"
+
+msgid "Use global filters(Class, Grade and Academic Year)"
+msgstr "Use global filters(Class, Grade and Academic Year)"
+
+msgid "Enrollments"
+msgstr "Enrollments"
