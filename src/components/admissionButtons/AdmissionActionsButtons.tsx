@@ -25,10 +25,10 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
     const { formData } = useBuildForm({ dataStoreData, programData, module: Modules.Admission, schoolCalendar });
     const { hide, show } = useShowAlerts()
     const setRefetch = useSetRecoilState(TableDataRefetch);
-    const academicYearFilter = academicYear !== null
-        ? `${schoolCalendar?.academicYear}:in:${academicYear}`
-        : null;
-    const filters = [academicYearFilter].filter((f): f is string => f !== null);
+    const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
+    const filters = academicYear !== null && admissionDateAttribute
+        ? [`${admissionDateAttribute}:ge:${academicYear}-01-01:le:${academicYear}-12-31`]
+        : [];
 
 
     const showAlert = (error: any) => {
@@ -181,7 +181,7 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
                 formVariablesFields={formData}
                 initialValues={formInitialValues}
                 setFormInitialValues={setFormInitialValues}
-                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.addmissionDate })}
+                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate })}
             />}
 
             {openSearchAdmission &&

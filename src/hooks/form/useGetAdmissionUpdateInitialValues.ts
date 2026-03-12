@@ -17,7 +17,7 @@ function useGetAdmissionUpdateInitialValues() {
         if (Object.keys(dataStoreData)?.length) {
             await getAdmission(admission)
                 .then((response: any) => {
-                    const admissionDateAttrId = dataStoreData?.admission?.addmissionDate;
+                    const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
                     const occurredAtFormatted = response?.results?.occurredAt
                         ? format(new Date(response?.results?.occurredAt), "yyyy-MM-dd")
                         : undefined;

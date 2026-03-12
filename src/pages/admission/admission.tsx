@@ -29,7 +29,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const { columns } = useHeader({ dataStoreData, programConfigData: program as unknown as ProgramConfig, programStage: "" });
     const { formData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Admission, schoolCalendar });
     const { formData: enrollFormData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Enrollment, schoolCalendar });
-    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.addmissionDate })
+    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate })
     const enrollFormFields = enrollmentFormFields({ formFieldsData: enrollFormData, sectionName: sectionType! })
 
     // Customize admission table columns:
@@ -42,7 +42,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         const sectionId = dataStoreData?.registration?.section;
         const academicYearId = dataStoreData?.registration?.academicYear;
         const filterDataElementIds = dataStoreData?.filters?.dataElements?.map((f: any) => f.dataElement) ?? [];
-        const admissionDateId = dataStoreData?.admission?.addmissionDate;
+        const admissionDateId = dataStoreData?.admission?.admissionDate;
         const columnsToRemove = [sectionId, academicYearId, ...filterDataElementIds].filter(Boolean);
 
         const enrollmentStatusColumn: CustomAttributeProps = {
@@ -144,9 +144,10 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
 
     // Admission date is a TEI attribute (full date like 2025-03-10).
     // When a year is selected, filter by date range within that year.
-    const admissionDateAttribute = dataStoreData?.admission?.addmissionDate;
+    const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
 
     useEffect(() => {
+        console.log("Fetching data with filters:", { school, academicYear, filterState, admissionDateAttribute });
         if (school)
             void getData({
                 page: pagination?.page,

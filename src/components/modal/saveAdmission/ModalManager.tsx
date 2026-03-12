@@ -26,7 +26,7 @@ function ModalManager(props: ModalManagerInterface) {
     const { open, setOpen, saveMode, initialValues: initialValuesFromSearch, formFields = [], formVariablesFields, setFormInitialValues, i18n } = props;
     const { getInitialValues, initialValues: updateInitialValues, loading: initialValuesLoading } = useGetAdmissionUpdateInitialValues()
 
-    const admissionDateAttrId = dataStoreData?.admission?.addmissionDate;
+    const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
     let allInitialValues = {
         orgUnit: school,
         registerschoolstaticform: schoolName ?? "",
