@@ -6,10 +6,10 @@ import EnrollSingleModal from "../enrollFromAdmission/EnrollSingleModal";
 import { TableDataRefetch } from "dhis2-semis-types"
 import { ModalManagerInterface } from "../../../types/modal/ModalProps";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
-import { ModalComponent } from "dhis2-semis-components";
+import { ModalComponent, useSchoolCalendarKey } from "dhis2-semis-components";
 import { admissionPostBody, admissionUpdateBody } from "../../../utils/admission";
 import useGetAdmissionUpdateInitialValues from "../../../hooks/form/useGetAdmissionUpdateInitialValues";
-import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams } from "dhis2-semis-functions";
+import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams, applyAcademicYearPrefix } from "dhis2-semis-functions";
 import { useDataEngine } from "@dhis2/app-runtime";
 
 const GENERATE_TEI_ATTRIBUTE: any = {
@@ -28,6 +28,7 @@ function ModalManager(props: ModalManagerInterface) {
     const engine = useDataEngine()
     const { urlParameters, useQuery } = useUrlParams();
     const { school, schoolName } = urlParameters;
+    const schoolCalendar = useSchoolCalendarKey()
     const { saveTei, loading: saving } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
     const admission = useQuery.get("admission") as string
@@ -42,6 +43,7 @@ function ModalManager(props: ModalManagerInterface) {
 
     const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
     const studentIdentifierAttrId = dataStoreData?.admission?.studentIdentifier;
+    const replaceYearPrefix = (dataStoreData as any)?.admission?.replaceIdentifierYearPrefix === true;
     let allInitialValues = {
         orgUnit: school,
         registerschoolstaticform: schoolName ?? "",
@@ -139,6 +141,17 @@ function ModalManager(props: ModalManagerInterface) {
             if (generatedId) {
                 formValues[studentIdentifierAttrId] = generatedId;
             }
+        }
+
+        // If year prefix replacement is enabled, apply the academic year prefix
+        if (replaceYearPrefix && studentIdentifierAttrId && formValues[studentIdentifierAttrId]) {
+            const admDate = (admissionDateAttrId ? formValues[admissionDateAttrId] : formValues?.admission_date) || format(new Date(), "yyyy-MM-dd");
+            const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
+            formValues[studentIdentifierAttrId] = applyAcademicYearPrefix(
+                formValues[studentIdentifierAttrId],
+                admDate,
+                calendars
+            );
         }
 
         const teiIdForEnrollment: string = initialValuesFromSearch?.["trackedEntity"] ?? "";
