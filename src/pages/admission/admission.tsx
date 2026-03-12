@@ -29,7 +29,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const { columns } = useHeader({ dataStoreData, programConfigData: program as unknown as ProgramConfig, programStage: "" });
     const { formData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Admission, schoolCalendar });
     const { formData: enrollFormData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Enrollment, schoolCalendar });
-    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate })
+    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier })
     const enrollFormFields = enrollmentFormFields({ formFieldsData: enrollFormData, sectionName: sectionType! })
 
     // Customize admission table columns:

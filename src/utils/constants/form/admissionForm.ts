@@ -47,7 +47,7 @@ const staticForm = () => {
   }
 }
 
-function formFields({ formFieldsData, sectionName, admissionDateAttributeId }: { formFieldsData: any[], sectionName: string, admissionDateAttributeId?: string }) {
+function formFields({ formFieldsData, sectionName, admissionDateAttributeId, studentIdentifierAttributeId }: { formFieldsData: any[], sectionName: string, admissionDateAttributeId?: string, studentIdentifierAttributeId?: string }) {
 
   const [studentAttributes = []] = formFieldsData;
 
@@ -65,6 +65,16 @@ function formFields({ formFieldsData, sectionName, admissionDateAttributeId }: {
     ? studentAttributes.filter((attr: any) => attr.id !== admissionDateAttributeId)
     : studentAttributes;
 
+  // For the configured student identifier attribute, make it editable (not disabled)
+  // so the user can type a value. If left empty, the system will auto-generate on submit.
+  const processedAttributes = studentIdentifierAttributeId
+    ? filteredStudentAttributes.map((attr: any) =>
+        attr.id === studentIdentifierAttributeId
+          ? { ...attr, disabled: false }
+          : attr
+      )
+    : filteredStudentAttributes;
+
   return [
     {
       name: "Admission Details",
@@ -80,7 +90,7 @@ function formFields({ formFieldsData, sectionName, admissionDateAttributeId }: {
       description: `${capitalizeString(sectionName)} personal details`,
       visible: true,
       fields: [
-        ...filteredStudentAttributes
+        ...processedAttributes
       ]
     }
   ];

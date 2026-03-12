@@ -181,7 +181,7 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
                 formVariablesFields={formData}
                 initialValues={formInitialValues}
                 setFormInitialValues={setFormInitialValues}
-                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate })}
+                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier })}
             />}
 
             {openSearchAdmission &&

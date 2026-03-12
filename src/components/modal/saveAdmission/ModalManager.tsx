@@ -9,10 +9,23 @@ import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { ModalComponent } from "dhis2-semis-components";
 import { admissionPostBody, admissionUpdateBody } from "../../../utils/admission";
 import useGetAdmissionUpdateInitialValues from "../../../hooks/form/useGetAdmissionUpdateInitialValues";
-import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine } from "dhis2-semis-functions";
+import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams } from "dhis2-semis-functions";
+import { useDataEngine } from "@dhis2/app-runtime";
+
+const GENERATE_TEI_ATTRIBUTE: any = {
+    results: {
+        resource: "trackedEntityAttributes",
+        id: ({ id }: { id: string }) => `${id}/generate`,
+        params: ({ params }: { params: object }) => ({
+            ...params,
+            expiration: 3
+        })
+    }
+}
 
 
 function ModalManager(props: ModalManagerInterface) {
+    const engine = useDataEngine()
     const { urlParameters, useQuery } = useUrlParams();
     const { school, schoolName } = urlParameters;
     const { saveTei, loading: saving } = useSaveTei();
@@ -23,10 +36,12 @@ function ModalManager(props: ModalManagerInterface) {
     const { program: programData, dataStoreData } = useGetSelectedKeys()
     const { attributes = [] } = useGetAttributes({ programData: programData! });
     const { errorLoading, returnPattern, loadingCodes, generatedVariables } = useGetPatternCode();
+    const { getPatternCodeParams } = useGetPatternCodeParams();
     const { open, setOpen, saveMode, initialValues: initialValuesFromSearch, formFields = [], formVariablesFields, setFormInitialValues, i18n } = props;
     const { getInitialValues, initialValues: updateInitialValues, loading: initialValuesLoading } = useGetAdmissionUpdateInitialValues()
 
     const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
+    const studentIdentifierAttrId = dataStoreData?.admission?.studentIdentifier;
     let allInitialValues = {
         orgUnit: school,
         registerschoolstaticform: schoolName ?? "",
@@ -38,7 +53,7 @@ function ModalManager(props: ModalManagerInterface) {
     const [values, setValues] = useState<{ [key: string]: any }>({ ...allInitialValues });
     const [showEnrollPrompt, setShowEnrollPrompt] = useState(false);
     const [admittedTeiId, setAdmittedTeiId] = useState<string>("");
-    const [admittedAttributes, setAdmittedAttributes] = useState<{ attribute: string; value: any }[]>([]);
+    const [submitting, setSubmitting] = useState(false);
 
     const { runRulesEngine, updatedVariables } = RulesEngine({
         values: values,
@@ -53,8 +68,14 @@ function ModalManager(props: ModalManagerInterface) {
     }, [values])
 
     useEffect(() => {
-        if (open && saveMode == "CREATE")
-            void returnPattern(attributes, school!);
+        if (open && saveMode == "CREATE") {
+            // Exclude the student identifier attribute from auto-generation on modal open
+            // so the user can type their own value. It will be generated on submit if left empty.
+            const attributesForPatternGen = studentIdentifierAttrId
+                ? attributes.filter((attr) => attr.id !== studentIdentifierAttrId)
+                : attributes;
+            void returnPattern(attributesForPatternGen, school!);
+        }
 
         if (open && saveMode == "UPDATE")
             void getInitialValues(trackedEntity, admission);
@@ -79,22 +100,57 @@ function ModalManager(props: ModalManagerInterface) {
         // }));
     };
 
+    /**
+     * Generate a value for the student identifier attribute using the DHIS2 API.
+     * Uses the attribute's configured pattern (e.g. RANDOM(XXXXXX), ORG_UNIT_CODE(...), etc.)
+     */
+    async function generateIdentifierValue(): Promise<string | null> {
+        if (!studentIdentifierAttrId) return null;
 
-    function onSubmit(e: Record<string, any>): void {
+        const identifierAttr = attributes.find((attr) => attr.id === studentIdentifierAttrId);
+        if (!identifierAttr?.pattern) return null;
+
+        try {
+            const params = await getPatternCodeParams({
+                pattern: identifierAttr.pattern,
+                orgUnit: school!,
+                params: {},
+                onFail: () => { }
+            });
+            const result = await engine.query(GENERATE_TEI_ATTRIBUTE, {
+                variables: { id: studentIdentifierAttrId, params }
+            }) as any;
+            return result?.results?.value ?? null;
+        } catch (error) {
+            console.error("Failed to generate student identifier:", error);
+            return null;
+        }
+    }
+
+
+    async function onSubmit(e: Record<string, any>): Promise<void> {
+        setSubmitting(true);
+        const formValues = { ...e };
+
+        // If the student identifier attribute is configured and the user left it empty,
+        // auto-generate a value before submitting.
+        if (studentIdentifierAttrId && !formValues[studentIdentifierAttrId]) {
+            const generatedId = await generateIdentifierValue();
+            if (generatedId) {
+                formValues[studentIdentifierAttrId] = generatedId;
+            }
+        }
+
         const teiIdForEnrollment: string = initialValuesFromSearch?.["trackedEntity"] ?? "";
-        const attributesForEnrollment: { attribute: string; value: any }[] = formVariablesFields
-            .flatMap((group: any[]) => group)
-            .filter((field: any) => field?.type === "attribute" && e[field.id] !== undefined)
-            .map((field: any) => ({ attribute: field.id, value: e[field.id] }));
 
         const data = () => {
             if (saveMode === "CREATE") {
                 return admissionPostBody({
-                    values: e,
+                    values: formValues,
                     orgUnitId: school!,
                     programId: programData?.id!,
                     formVariablesFields: formVariablesFields,
-                    admissionDate: (admissionDateAttrId ? e?.[admissionDateAttrId] : e?.admission_date) || format(new Date(), "yyyy-MM-dd"),
+                    admissionDate: (admissionDateAttrId ? formValues?.[admissionDateAttrId] : formValues?.admission_date) || format(new Date(), "yyyy-MM-dd"),
                     trackedEntityType: programData?.trackedEntityType?.id!,
                     trackedEntityId: initialValuesFromSearch!["trackedEntity"]
                 });
@@ -103,13 +159,13 @@ function ModalManager(props: ModalManagerInterface) {
             if (saveMode === "UPDATE") {
                 return admissionUpdateBody({
                     formVariablesFields: formVariablesFields,
-                    admissionId: e?.admission,
-                    admissionDate: (admissionDateAttrId ? e?.[admissionDateAttrId] : e?.admission_date) || format(new Date(), "yyyy-MM-dd"),
-                    trackedEntityId: e?.trackedEntity,
+                    admissionId: formValues?.admission,
+                    admissionDate: (admissionDateAttrId ? formValues?.[admissionDateAttrId] : formValues?.admission_date) || format(new Date(), "yyyy-MM-dd"),
+                    trackedEntityId: formValues?.trackedEntity,
                     trackedEntityType: programData?.trackedEntityType?.id!,
                     orgUnitId: school!,
                     programId: programData?.id!,
-                    formValues: e,
+                    formValues: formValues,
                 });
             }
         };
@@ -121,10 +177,10 @@ function ModalManager(props: ModalManagerInterface) {
                 sucess: `${i18n.t("Operation concluded successfully")}`,
             },
             handleComplete: () => {
+                setSubmitting(false);
                 setRefetch(!refetch);
                 if (saveMode === "CREATE" && teiIdForEnrollment) {
                     setAdmittedTeiId(teiIdForEnrollment);
-                    setAdmittedAttributes(attributesForEnrollment);
                     handleCloseModal();
                     setShowEnrollPrompt(true);
                 } else {
@@ -151,7 +207,7 @@ function ModalManager(props: ModalManagerInterface) {
             })}
         >
             <ModalContent
-                loading={saving!}
+                loading={saving! || submitting}
                 onSubmit={onSubmit}
                 formValues={values}
                 onChange={handleChange}
@@ -174,7 +230,6 @@ function ModalManager(props: ModalManagerInterface) {
                 open={showEnrollPrompt}
                 setOpen={setShowEnrollPrompt}
                 trackedEntityId={admittedTeiId}
-                attributes={admittedAttributes}
                 onComplete={() => setShowEnrollPrompt(false)}
             />
         )}
