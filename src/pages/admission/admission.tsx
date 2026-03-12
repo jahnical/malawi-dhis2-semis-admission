@@ -143,8 +143,12 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     }, [tableData.data]);
 
     // Admission date is a TEI attribute (full date like 2025-03-10).
-    // When a year is selected, filter by date range within that year.
+    // When a year is selected, filter by the academic calendar's actual start/end dates.
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
+    const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
+    const selectedCalendar = calendars.find((cal: any) => cal?.academicYear?.code === academicYear);
+    const calendarStartDate = selectedCalendar?.academicYear?.startDate;
+    const calendarEndDate = selectedCalendar?.academicYear?.endDate;
 
     useEffect(() => {
         console.log("Fetching data with filters:", { school, academicYear, filterState, admissionDateAttribute });
@@ -156,8 +160,8 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 orgUnit: school!,
                 attributeFilters: [
                     ...(filterState.attributes || []),
-                    ...(academicYear && admissionDateAttribute
-                        ? [`${admissionDateAttribute}:ge:${academicYear}-01-01:le:${academicYear}-12-31`]
+                    ...(academicYear && admissionDateAttribute && calendarStartDate && calendarEndDate
+                        ? [`${admissionDateAttribute}:ge:${calendarStartDate}:le:${calendarEndDate}`]
                         : [])
                 ],
                 baseProgramStage: dataStoreData?.registration?.programStage ?? "",

@@ -26,8 +26,12 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
     const { hide, show } = useShowAlerts()
     const setRefetch = useSetRecoilState(TableDataRefetch);
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
-    const filters = academicYear !== null && admissionDateAttribute
-        ? [`${admissionDateAttribute}:ge:${academicYear}-01-01:le:${academicYear}-12-31`]
+    const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
+    const selectedCalendar = calendars.find((cal: any) => cal?.academicYear?.code === academicYear);
+    const calendarStartDate = selectedCalendar?.academicYear?.startDate;
+    const calendarEndDate = selectedCalendar?.academicYear?.endDate;
+    const filters = academicYear !== null && admissionDateAttribute && calendarStartDate && calendarEndDate
+        ? [`${admissionDateAttribute}:ge:${calendarStartDate}:le:${calendarEndDate}`]
         : [];
 
 
