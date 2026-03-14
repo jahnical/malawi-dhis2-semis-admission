@@ -143,12 +143,18 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     }, [tableData.data]);
 
     // Admission date is a TEI attribute (full date like 2025-03-10).
-    // When a year is selected, filter by the academic calendar's actual start/end dates.
+    // When an academic year is selected, filter by the first year only.
+    // Example: 2024-2025 => admissions in 2024 only.
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
-    const selectedCalendar = calendars.find((cal: any) => cal?.academicYear?.code === academicYear);
-    const calendarStartDate = selectedCalendar?.academicYear?.startDate;
-    const calendarEndDate = selectedCalendar?.academicYear?.endDate;
+    const selectedCalendar = calendars.find((cal: any) =>
+        cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
+    );
+    const academicYearCode = selectedCalendar?.academicYear?.code || academicYear;
+    const firstYearMatch = typeof academicYearCode === 'string' ? academicYearCode.match(/\d{4}/) : null;
+    const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN;
+    const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear - 1}-01-01` : undefined;
+    const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear - 1}-12-31` : undefined;
 
     useEffect(() => {
         console.log("Fetching data with filters:", { school, academicYear, filterState, admissionDateAttribute });
@@ -160,8 +166,8 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 orgUnit: school!,
                 attributeFilters: [
                     ...(filterState.attributes || []),
-                    ...(academicYear && admissionDateAttribute && calendarStartDate && calendarEndDate
-                        ? [`${admissionDateAttribute}:ge:${calendarStartDate}:le:${calendarEndDate}`]
+                    ...(academicYear && admissionDateAttribute && admissionYearStart && admissionYearEnd
+                        ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
                         : [])
                 ],
                 baseProgramStage: dataStoreData?.registration?.programStage ?? "",

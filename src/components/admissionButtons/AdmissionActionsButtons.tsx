@@ -27,11 +27,16 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
     const setRefetch = useSetRecoilState(TableDataRefetch);
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
-    const selectedCalendar = calendars.find((cal: any) => cal?.academicYear?.code === academicYear);
-    const calendarStartDate = selectedCalendar?.academicYear?.startDate;
-    const calendarEndDate = selectedCalendar?.academicYear?.endDate;
-    const filters = academicYear !== null && admissionDateAttribute && calendarStartDate && calendarEndDate
-        ? [`${admissionDateAttribute}:ge:${calendarStartDate}:le:${calendarEndDate}`]
+    const selectedCalendar = calendars.find((cal: any) =>
+        cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
+    );
+    const academicYearCode = selectedCalendar?.academicYear?.code || academicYear;
+    const firstYearMatch = typeof academicYearCode === 'string' ? academicYearCode.match(/\d{4}/) : null;
+    const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN;
+    const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear -1}-01-01` : undefined;
+    const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear -1}-12-31` : undefined;
+    const filters = academicYear !== null && admissionDateAttribute && admissionYearStart && admissionYearEnd
+        ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
         : [];
 
 
