@@ -12,7 +12,23 @@ import useGetSelectedKeys from '../../hooks/config/useGetSelectedKeys';
 import { useSetRecoilState } from 'recoil';
 import EnrollBulkModal, { SelectedStudent } from '../modal/enrollFromAdmission/EnrollBulkModal';
 
-function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18n: D2I18n, baseUrl: string, selectedStudents?: SelectedStudent[] }) {
+function AdmissionActionsButtons({
+    i18n,
+    baseUrl,
+    selectedStudents = [],
+    enrollmentFormFields = [],
+    enrollmentFormVariables = [],
+    defaultAcademicYear,
+    academicYearDataElement,
+}: {
+    i18n: D2I18n,
+    baseUrl: string,
+    selectedStudents?: SelectedStudent[],
+    enrollmentFormFields?: any,
+    enrollmentFormVariables?: any[],
+    defaultAcademicYear?: string,
+    academicYearDataElement?: string,
+}) {
     const { urlParameters } = useUrlParams();
     const { sectionName } = useGetSectionTypeLabel();
     const schoolCalendar = useSchoolCalendarKey()
@@ -211,6 +227,10 @@ function AdmissionActionsButtons({ i18n, baseUrl, selectedStudents = [] }: { i18
                     open={openEnrollBulkModal}
                     setOpen={setOpenEnrollBulkModal}
                     selectedStudents={selectedStudents}
+                    formFields={enrollmentFormFields}
+                    formVariablesFields={enrollmentFormVariables}
+                    defaultAcademicYear={defaultAcademicYear}
+                    academicYearDataElement={academicYearDataElement}
                 />
             )}
         </div>

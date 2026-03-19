@@ -11,6 +11,7 @@ import { useBuildForm, useHeader, useTableData, useUrlParams, useViewPortWidth }
 import AdmissionActionsButtons from "../../components/admissionButtons/AdmissionActionsButtons";
 import { formFields } from '../../utils/constants/form/admissionForm';
 import { enrollmentFormFields } from '../../utils/constants/form/enrollmentForm';
+import { SelectedStudent } from '../../components/modal/enrollFromAdmission/EnrollBulkModal';
 
 export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUrl: string }) {
     const { viewPortWidth } = useViewPortWidth()
@@ -21,6 +22,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const [openEditModal, setOpenEditModal] = useState<boolean>(false)
     const [openDeleteModal, setOpenDeleteModal] = useState<boolean>(false)
     const [openEnrollModal, setOpenEnrollModal] = useState<boolean>(false)
+    const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([])
     const [enrollStudentData, setEnrollStudentData] = useState<{ trackedEntityId: string; enrollmentId: string; activeEnrollmentToComplete: string; activeEnrollmentEnrolledAt: string; initialValues: Record<string, any> }>({ trackedEntityId: "", enrollmentId: "", activeEnrollmentToComplete: "", activeEnrollmentEnrolledAt: "", initialValues: {} })
     const { getData, tableData, loading } = useTableData({ module: Modules.Admission });
     const [filterState, setFilterState] = useState<{ dataElements: any, attributes: any }>({ attributes: [], dataElements: [] });
@@ -31,6 +33,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const { formData: enrollFormData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Enrollment, schoolCalendar });
     const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier })
     const enrollFormFields = enrollmentFormFields({ formFieldsData: enrollFormData, sectionName: sectionType! })
+    const attributeFields = useMemo(() => (formData?.[0] ?? []).filter((f: any) => f.type === "attribute"), [formData])
 
     // Customize admission table columns:
     // - Remove section and filter data element columns (stream/class)
@@ -211,11 +214,34 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         return filteredRowsByDataElements.map((row: any) => ({
             ...row,
             isEnrolledCurrentAcademicYear: row.hasActiveEnrollment === 'Yes',
+            disableSelection: row.hasActiveEnrollment === 'Yes',
             hasActiveEnrollment: row.hasActiveEnrollment === 'Yes'
                 ? <Tag positive>{i18n.t('Enrolled')}</Tag>
                 : <Tag neutral>{i18n.t('Not Enrolled')}</Tag>
         }));
     }, [tableData.data, filteredRowsByDataElements]);
+
+    const selectedStudents = useMemo<SelectedStudent[]>(() => {
+        return selectedRows
+            .filter((row: Record<string, any>) => !row.disableSelection)
+            .map((row: Record<string, any>) => ({
+                trackedEntity: row.trackedEntity,
+                enrollmentId: row.enrollableEnrollmentId,
+                activeEnrollmentToComplete: row.activeEnrollmentToComplete,
+                activeEnrollmentEnrolledAt: row.activeEnrollmentEnrolledAt,
+                attributes: attributeFields
+                    .filter((field: any) => row[field.id] !== undefined)
+                    .map((field: any) => ({ attribute: field.id, value: row[field.id] }))
+            }));
+    }, [selectedRows, attributeFields]);
+
+    useEffect(() => {
+        setSelectedRows((prev) => prev.filter((row: Record<string, any>) =>
+            displayTableData.some((currentRow: Record<string, any>) =>
+                currentRow.trackedEntity === row.trackedEntity && !currentRow.disableSelection
+            )
+        ));
+    }, [displayTableData]);
 
     // Admission date is a TEI attribute (full date like 2025-03-10).
     // When an academic year is selected, filter by the first year only.
@@ -275,6 +301,9 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                         <Table
                             tableData={displayTableData}
                             programConfig={program!}
+                            selectable
+                            selected={selectedRows}
+                            setSelected={setSelectedRows}
                             pagination={pagination}
                             setPagination={setPagination}
                             paginate={!loading}
@@ -286,7 +315,17 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                             showRowActions
                             filterState={filterState}
                             loading={loading}
-                            rightElements={<AdmissionActionsButtons i18n={i18n} baseUrl={baseUrl} />}
+                            rightElements={
+                                <AdmissionActionsButtons
+                                    i18n={i18n}
+                                    baseUrl={baseUrl}
+                                    selectedStudents={selectedStudents}
+                                    enrollmentFormFields={enrollFormFields}
+                                    enrollmentFormVariables={enrollFormData}
+                                    defaultAcademicYear={defaultCalendarAcademicYear ?? academicYear ?? undefined}
+                                    academicYearDataElement={dataStoreData?.registration?.academicYear}
+                                />
+                            }
                             setFilterState={setFilterState}
                         />
                         {openDeleteModal && <ModalManagerAdmissionDelete i18n={i18n} open={openDeleteModal} setOpen={setOpenDeleteModal} saveMode="UPDATE" />}

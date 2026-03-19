@@ -2,14 +2,18 @@ import React from "react";
 import { format } from "date-fns";
 import { useRecoilState } from "recoil";
 import { TableDataRefetch } from "dhis2-semis-types";
-import { ModalComponent, useGetUsedProgramStages } from "dhis2-semis-components";
+import { Form } from "react-final-form";
+import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, CustomForm } from "dhis2-semis-components";
 import { useSaveTei, useUrlParams, useGetSectionTypeLabel } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
-import { Button, ButtonStrip } from "@dhis2/ui";
+import { useConfig } from "@dhis2/app-runtime";
+import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
 
 export interface SelectedStudent {
     trackedEntity: string;
-    enrollmentId: string;
+    enrollmentId?: string;
+    activeEnrollmentToComplete?: string;
+    activeEnrollmentEnrolledAt?: string;
     attributes: { attribute: string; value: any }[];
 }
 
@@ -18,48 +22,67 @@ interface EnrollBulkModalProps {
     open: boolean;
     setOpen: (open: boolean) => void;
     selectedStudents: SelectedStudent[];
+    formFields?: any;
+    formVariablesFields?: any[];
+    defaultAcademicYear?: string;
+    academicYearDataElement?: string;
 }
 
-function EnrollBulkModal({ i18n, open, setOpen, selectedStudents }: EnrollBulkModalProps) {
+function EnrollBulkModal({
+    i18n,
+    open,
+    setOpen,
+    selectedStudents,
+    formFields = [],
+    formVariablesFields = [],
+    defaultAcademicYear,
+    academicYearDataElement,
+}: EnrollBulkModalProps) {
+    const { baseUrl } = useConfig();
     const { urlParameters } = useUrlParams();
-    const { school: orgUnitId } = urlParameters;
+    const { school: orgUnitId, schoolName } = urlParameters;
     const { saveTei, loading } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
     const [, setRefetch] = useRecoilState(TableDataRefetch);
     const { program: programData } = useGetSelectedKeys();
     const programStagesToSave = useGetUsedProgramStages({ sectionType: sectionName });
 
+    const defaultInitialValues: Record<string, any> = {
+        orgUnit: orgUnitId,
+        registerschoolstaticform: schoolName,
+        enrollment_date: format(new Date(), "yyyy-MM-dd"),
+    };
+
+    const [values, setValues] = React.useState<Record<string, any>>({ ...defaultInitialValues });
+
     const handleClose = () => setOpen(false);
 
-    function onSubmit() {
-        const enrollmentDate = format(new Date(), "yyyy-MM-dd");
+    const handleChange = (_e: { field: any; value: string; name: string }) => {
+        // Handled by CustomForm / react-final-form
+    };
 
-        const trackedEntities = selectedStudents.map(student => ({
-            trackedEntity: student.trackedEntity,
-            trackedEntityType: programData?.trackedEntityType?.id,
-            orgUnit: orgUnitId,
-            enrollments: [{
-                enrollment: student.enrollmentId,
-                orgUnit: orgUnitId,
-                program: programData?.id,
-                status: "COMPLETED",
-                events: programStagesToSave
-                    .filter((ps): ps is string => ps !== undefined)
-                    .map(programStage => ({
-                        orgUnit: orgUnitId,
-                        notes: [],
-                        status: "ACTIVE",
-                        program: programData?.id,
-                        occurredAt: enrollmentDate,
-                        scheduledAt: enrollmentDate,
-                        programStage,
-                        dataValues: [],
-                    })),
-                attributes: student.attributes,
-                occurredAt: enrollmentDate,
-                enrolledAt: enrollmentDate,
-            }]
-        }));
+    function onSubmit(sharedValues: Record<string, any>) {
+        const enrollmentDate = sharedValues?.enrollment_date || format(new Date(), "yyyy-MM-dd");
+
+        const trackedEntities = selectedStudents.map((student) => {
+            const payload = enrollmentPostBody({
+                values: sharedValues,
+                orgUnitId: orgUnitId!,
+                programStagesToSave,
+                programId: programData?.id!,
+                formVariablesFields,
+                enrollmentDate,
+                trackedEntityType: programData?.trackedEntityType?.id!,
+                trackedEntityId: student.trackedEntity,
+                enrollmentId: student.enrollmentId,
+                activeEnrollmentToComplete: student.activeEnrollmentToComplete,
+                activeEnrollmentEnrolledAt: student.activeEnrollmentEnrolledAt,
+                defaultAcademicYear,
+                academicYearDataElement,
+            });
+
+            return payload.trackedEntities[0];
+        });
 
         saveTei({
             data: { trackedEntities },
@@ -87,33 +110,25 @@ function EnrollBulkModal({ i18n, open, setOpen, selectedStudents }: EnrollBulkMo
                 section: i18n.t(sectionName),
             })}
         >
-            <div style={{ padding: "16px" }}>
-                <p>
-                    {i18n.t(
-                        "You are about to enroll {{count}} admitted {{section}}(s). This will mark their admission as complete.",
-                        {
-                            count: selectedStudents.length,
-                            section: i18n.t(sectionName),
-                        }
-                    )}
-                </p>
-                <ButtonStrip>
-                    <Button
-                        primary
-                        onClick={onSubmit}
-                        loading={!!loading}
-                        disabled={selectedStudents.length === 0}
-                    >
-                        {i18n.t("Enroll {{count}} {{section}}s", {
-                            count: selectedStudents.length,
-                            section: i18n.t(sectionName),
-                        })}
-                    </Button>
-                    <Button onClick={handleClose}>
-                        {i18n.t("Cancel")}
-                    </Button>
-                </ButtonStrip>
-            </div>
+            <WithPadding>
+                <WithBorder type="all">
+                    <WithPadding>
+                        <CustomForm
+                            Form={Form}
+                            loading={!!loading}
+                            baseUrl={baseUrl}
+                            withButtons={true}
+                            formValues={values}
+                            formFields={formFields}
+                            onInputChange={handleChange}
+                            setFormValues={setValues}
+                            initialValues={defaultInitialValues}
+                            onCancel={handleClose}
+                            onFormSubtmit={(formValues: Record<string, any>) => onSubmit(formValues)}
+                        />
+                    </WithPadding>
+                </WithBorder>
+            </WithPadding>
         </ModalComponent>
     );
 }
