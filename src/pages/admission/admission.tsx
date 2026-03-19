@@ -1,7 +1,7 @@
 import { useRecoilValue } from 'recoil';
 import React, { useEffect, useMemo, useState } from "react";
-import { IconEdit24, IconAddCircle24, Tag } from "@dhis2/ui";
-import { Table, InfoPage, useSchoolCalendarKey } from "dhis2-semis-components";
+import { IconEdit24, IconAddCircle24, IconInfo24, Tag } from "@dhis2/ui";
+import { Table, InfoPage, useSchoolCalendarKey, ModalComponent, EnrollmentDetailsComponent } from "dhis2-semis-components";
 import ModalManager from "../../components/modal/saveAdmission/ModalManager";
 import EnrollSingleModal from "../../components/modal/enrollFromAdmission/EnrollSingleModal";
 import { TableDataRefetch, Modules, ProgramConfig, D2I18n, VariablesTypes, CustomAttributeProps } from "dhis2-semis-types"
@@ -22,6 +22,8 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const [openEditModal, setOpenEditModal] = useState<boolean>(false)
     const [openDeleteModal, setOpenDeleteModal] = useState<boolean>(false)
     const [openEnrollModal, setOpenEnrollModal] = useState<boolean>(false)
+    const [openInfoModal, setOpenInfoModal] = useState<boolean>(false)
+    const [selectedInfoRow, setSelectedInfoRow] = useState<Record<string, any> | null>(null)
     const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([])
     const [enrollStudentData, setEnrollStudentData] = useState<{ trackedEntityId: string; enrollmentId: string; activeEnrollmentToComplete: string; activeEnrollmentEnrolledAt: string; initialValues: Record<string, any> }>({ trackedEntityId: "", enrollmentId: "", activeEnrollmentToComplete: "", activeEnrollmentEnrolledAt: "", initialValues: {} })
     const { getData, tableData, loading } = useTableData({ module: Modules.Admission });
@@ -127,6 +129,13 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         setOpenEnrollModal(true);
     };
 
+    const handleOpenInfoModal = (e: Record<string, any>) => {
+        const row = e?.row;
+        if (!row) return;
+        setSelectedInfoRow(row);
+        setOpenInfoModal(true);
+    };
+
     useEffect(() => {
         setPagination((prev: any) => ({ ...prev, totalPages: tableData?.pagination?.totalPages, totalElements: tableData?.pagination?.totalElements }))
     }, [tableData])
@@ -148,6 +157,15 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
             disableOnInactive: false,
             loading: false,
             onClick: (e: any) => handleOpenEnrollModal(e)
+        },
+        {
+            icon: <IconInfo24 />,
+            color: '#144b73',
+            label: `${i18n.t("View history")}`,
+            disabled: false,
+            disableOnInactive: false,
+            loading: false,
+            onClick: (e: any) => handleOpenInfoModal(e)
         },
     ];
 
@@ -346,6 +364,27 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                                 formVariablesFields={enrollFormData}
                                 onComplete={() => setOpenEnrollModal(false)}
                             />
+                        )}
+                        {openInfoModal && (
+                            <ModalComponent
+                                open={openInfoModal}
+                                handleClose={() => {
+                                    setOpenInfoModal(false);
+                                    setSelectedInfoRow(null);
+                                }}
+                                title={i18n.t("Enrollment History")}
+                                size="large"
+                            >
+                                <EnrollmentDetailsComponent
+                                    programConfig={program!}
+                                    enrollmentsData={selectedInfoRow?.registrationEvents ?? []}
+                                    existingAcademicYear={Boolean(selectedInfoRow?.isEnrolledCurrentAcademicYear)}
+                                    onSelectTei={selectedInfoRow ? () => {
+                                        handleOpenEnrollModal({ row: selectedInfoRow });
+                                        setOpenInfoModal(false);
+                                    } : undefined}
+                                />
+                            </ModalComponent>
                         )}
                     </>
             }
