@@ -41,9 +41,11 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
 
         const sectionId = dataStoreData?.registration?.section;
         const academicYearId = dataStoreData?.registration?.academicYear;
+        const gradeId = dataStoreData?.registration?.grade;
         const filterDataElementIds = dataStoreData?.filters?.dataElements?.map((f: any) => f.dataElement) ?? [];
         const admissionDateId = dataStoreData?.admission?.admissionDate;
-        const columnsToRemove = [sectionId, academicYearId, ...filterDataElementIds].filter(Boolean);
+        const columnsToRemove = [sectionId, academicYearId, ...filterDataElementIds]
+            .filter((id: any) => Boolean(id) && id !== gradeId);
 
         const enrollmentStatusColumn: CustomAttributeProps = {
             id: "hasActiveEnrollment",
@@ -63,13 +65,19 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
             type: VariablesTypes.Custom
         };
 
-        const gradeId = dataStoreData?.registration?.grade;
-
         const filtered = columns
             .filter((col: CustomAttributeProps) => !columnsToRemove.includes(col.id))
             .map((col: CustomAttributeProps) => {
                 if (col.id === gradeId) {
-                    return { ...col, displayName: "Current Standard", header: "Current Standard", name: "Current Standard", labelName: "Current Standard" };
+                    return {
+                        ...col,
+                        visible: true,
+                        searchable: true,
+                        displayName: "Current Standard",
+                        header: "Current Standard",
+                        name: "Current Standard",
+                        labelName: "Current Standard"
+                    };
                 }
                 // Ensure admission date column is always visible
                 if (admissionDateId && col.id === admissionDateId) {
@@ -129,23 +137,91 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
 
     const rowsActions = [
         { icon: <IconEdit24 />, color: '#277314', label: `${i18n.t("Edition")}`, disabled: false, disableOnInactive: true, loading: false, onClick: (e: any) => handleOpenModal(e, "edit") },
-        { icon: <IconAddCircle24 />, color: '#1b6d85', label: `${i18n.t("Enroll")}`, disabled: false, disableOnInactive: false, loading: false, onClick: (e: any) => handleOpenEnrollModal(e) },
+        {
+            icon: <IconAddCircle24 />,
+            color: '#1b6d85',
+            label: `${i18n.t("Enroll")}`,
+            disabled: (row?: Record<string, any>) => Boolean(row?.isEnrolledCurrentAcademicYear),
+            disableOnInactive: false,
+            loading: false,
+            onClick: (e: any) => handleOpenEnrollModal(e)
+        },
     ];
+
+    const dataElementFilterExpressions = useMemo(() => {
+        return (filterState.dataElements ?? []).reduce((acc: string[], item: any) => {
+            if (Array.isArray(item)) {
+                const expression = item?.[0];
+                if (typeof expression === 'string') acc.push(expression);
+            } else if (typeof item === 'string') {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
+    }, [filterState.dataElements]);
+
+    const matchesDataElementFilter = (row: Record<string, any>, expression: string) => {
+        const [fieldId, operator, firstValue, ...rest] = expression.split(':');
+        const rawValue = row?.[fieldId];
+
+        if (rawValue === undefined || rawValue === null) return false;
+
+        const rowValue = String(rawValue);
+        const normalizedRowValue = rowValue.toLowerCase();
+
+        switch (operator) {
+            case 'eq':
+                return normalizedRowValue === String(firstValue ?? '').toLowerCase();
+
+            case 'in': {
+                const options = String([firstValue, ...rest].join(':') ?? '')
+                    .split(';')
+                    .map((value) => value.toLowerCase());
+                return options.includes(normalizedRowValue);
+            }
+
+            case 'like':
+                return normalizedRowValue.includes(String([firstValue, ...rest].join(':') ?? '').toLowerCase());
+
+            case 'ge': {
+                const leIndex = rest.findIndex((token) => token === 'le');
+                const endValue = leIndex > -1 ? rest[leIndex + 1] : undefined;
+
+                if (firstValue && rowValue < firstValue) return false;
+                if (endValue && rowValue > endValue) return false;
+                return true;
+            }
+
+            default:
+                return true;
+        }
+    };
+
+    const filteredRowsByDataElements = useMemo(() => {
+        if (!dataElementFilterExpressions.length) return tableData.data;
+
+        return tableData.data.filter((row: Record<string, any>) =>
+            dataElementFilterExpressions.every((expression: string) => matchesDataElementFilter(row, expression))
+        );
+    }, [tableData.data, dataElementFilterExpressions]);
 
     // Transform table data to render enrollment status as a colored chip
     const displayTableData = useMemo(() => {
-        return tableData.data.map((row: any) => ({
+        console.log("Raw table data:", tableData.data);
+        return filteredRowsByDataElements.map((row: any) => ({
             ...row,
+            isEnrolledCurrentAcademicYear: row.hasActiveEnrollment === 'Yes',
             hasActiveEnrollment: row.hasActiveEnrollment === 'Yes'
                 ? <Tag positive>{i18n.t('Enrolled')}</Tag>
                 : <Tag neutral>{i18n.t('Not Enrolled')}</Tag>
         }));
-    }, [tableData.data]);
+    }, [tableData.data, filteredRowsByDataElements]);
 
     // Admission date is a TEI attribute (full date like 2025-03-10).
     // When an academic year is selected, filter by the first year only.
     // Example: 2024-2025 => admissions in 2024 only.
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
+    const defaultCalendarAcademicYear = (schoolCalendar as any)?.defaults?.academicYear;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
     const selectedCalendar = calendars.find((cal: any) =>
         cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
@@ -157,7 +233,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear - 1}-12-31` : undefined;
 
     useEffect(() => {
-        console.log("Fetching data with filters:", { school, academicYear, filterState, admissionDateAttribute });
+        console.log("DataStoreData:", dataStoreData);
         if (school)
             void getData({
                 page: pagination?.page,
@@ -173,6 +249,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 baseProgramStage: dataStoreData?.registration?.programStage ?? "",
                 order: dataStoreData.defaults.defaultOrder,
                 academicYear: academicYear ?? undefined,
+                enrollmentStatusAcademicYear: defaultCalendarAcademicYear ?? academicYear ?? undefined,
                 academicYearDataElement: dataStoreData?.registration?.academicYear
             })
     }, [sectionType, filterState, pagination.page, pagination?.pageSize, refetch, school, academicYear])
@@ -223,7 +300,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                                 enrollmentId={enrollStudentData.enrollmentId}
                                 activeEnrollmentToComplete={enrollStudentData.activeEnrollmentToComplete || undefined}
                                 activeEnrollmentEnrolledAt={enrollStudentData.activeEnrollmentEnrolledAt || undefined}
-                                defaultAcademicYear={academicYear ?? undefined}
+                                defaultAcademicYear={defaultCalendarAcademicYear ?? academicYear ?? undefined}
                                 academicYearDataElement={dataStoreData?.registration?.academicYear}
                                 initialValues={enrollStudentData.initialValues}
                                 formFields={enrollFormFields}
