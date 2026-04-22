@@ -11,6 +11,7 @@ import { formFields } from '../../utils/constants/form/admissionForm';
 import useGetSelectedKeys from '../../hooks/config/useGetSelectedKeys';
 import { useSetRecoilState } from 'recoil';
 import EnrollBulkModal, { SelectedStudent } from '../modal/enrollFromAdmission/EnrollBulkModal';
+import EnrollSingleModal from '../modal/enrollFromAdmission/EnrollSingleModal';
 
 function AdmissionActionsButtons({
     i18n,
@@ -38,6 +39,14 @@ function AdmissionActionsButtons({
     const { school: orgUnit, academicYear } = urlParameters;
     const [openSearchAdmission, setOpenSearchAdmission] = useState<boolean>(false);
     const [openEnrollBulkModal, setOpenEnrollBulkModal] = useState<boolean>(false);
+    const [openEnrollSingleModal, setOpenEnrollSingleModal] = useState<boolean>(false);
+    const [enrollStudentData, setEnrollStudentData] = useState<{
+        trackedEntityId: string;
+        enrollmentId?: string;
+        activeEnrollmentToComplete?: string;
+        activeEnrollmentEnrolledAt?: string;
+        initialValues: Record<string, any>;
+    }>({ trackedEntityId: "", enrollmentId: undefined, activeEnrollmentToComplete: undefined, activeEnrollmentEnrolledAt: undefined, initialValues: {} });
     const { formData } = useBuildForm({ dataStoreData, programData, module: Modules.Admission, schoolCalendar });
     const { hide, show } = useShowAlerts()
     const setRefetch = useSetRecoilState(TableDataRefetch);
@@ -136,6 +145,23 @@ function AdmissionActionsButtons({
         },
     ];
 
+    const onSelectTeiForEnrollment = (payload: {
+        trackedEntityId: string;
+        enrollmentId?: string;
+        activeEnrollmentToComplete?: string;
+        activeEnrollmentEnrolledAt?: string;
+        initialValues?: Record<string, any>;
+    }) => {
+        setEnrollStudentData({
+            trackedEntityId: payload.trackedEntityId,
+            enrollmentId: payload.enrollmentId,
+            activeEnrollmentToComplete: payload.activeEnrollmentToComplete,
+            activeEnrollmentEnrolledAt: payload.activeEnrollmentEnrolledAt,
+            initialValues: payload.initialValues ?? {},
+        });
+        setOpenEnrollSingleModal(true);
+    }
+
     return (
         <div className={styles.container}>
             <ButtonStrip className={styles.work_buttons}>
@@ -218,8 +244,27 @@ function AdmissionActionsButtons({
                     Form={Form}
                     setOpenNewAdmissionModal={() => setOpenSaveModal(true)}
                     setFormInitialValues={(values: any) => setFormInitialValues(values)}
+                    onSelectTeiForEnrollment={onSelectTeiForEnrollment}
                 />
             }
+
+            {openEnrollSingleModal && (
+                <EnrollSingleModal
+                    i18n={i18n}
+                    open={openEnrollSingleModal}
+                    setOpen={setOpenEnrollSingleModal}
+                    trackedEntityId={enrollStudentData.trackedEntityId}
+                    enrollmentId={enrollStudentData.enrollmentId}
+                    activeEnrollmentToComplete={enrollStudentData.activeEnrollmentToComplete}
+                    activeEnrollmentEnrolledAt={enrollStudentData.activeEnrollmentEnrolledAt}
+                    defaultAcademicYear={defaultAcademicYear}
+                    academicYearDataElement={academicYearDataElement}
+                    initialValues={enrollStudentData.initialValues}
+                    formFields={enrollmentFormFields}
+                    formVariablesFields={enrollmentFormVariables}
+                    onComplete={() => setOpenEnrollSingleModal(false)}
+                />
+            )}
 
             {openEnrollBulkModal && (
                 <EnrollBulkModal
