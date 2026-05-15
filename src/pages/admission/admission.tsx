@@ -325,7 +325,8 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 filterAdmissionByEventAcademicYear: Boolean(academicYear && !hasAdmissionYearDateFilter),
                 transferConfig: {
                     transferProgramStage: dataStoreData?.transfer?.programStage,
-                    destinySchoolDataElement: dataStoreData?.transfer?.destinySchool
+                    destinySchoolDataElement: dataStoreData?.transfer?.destinySchool,
+                    originSchoolDataElement: dataStoreData?.transfer?.originSchool
                 },
                 ouMode: "DESCENDANTS"
             })
