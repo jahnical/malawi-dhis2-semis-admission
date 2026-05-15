@@ -70,6 +70,24 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
             type: VariablesTypes.Custom
         };
 
+        const transferColumn: CustomAttributeProps = {
+            id: "transferCategory",
+            displayName: i18n.t("Transfer"),
+            header: i18n.t("Transfer"),
+            name: i18n.t("Transfer"),
+            labelName: i18n.t("Transfer"),
+            required: false,
+            valueType: "TEXT" as unknown as CustomAttributeProps["valueType"],
+            visible: true,
+            disabled: false,
+            pattern: "",
+            searchable: false,
+            error: false,
+            content: "",
+            key: "transferCategory",
+            type: VariablesTypes.Custom
+        };
+
         const filtered = columns
             .filter((col: CustomAttributeProps) => !columnsToRemove.includes(col.id))
             .map((col: CustomAttributeProps) => {
@@ -78,21 +96,21 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                         ...col,
                         visible: true,
                         searchable: true,
-                        displayName: "Current Standard",
-                        header: "Current Standard",
-                        name: "Current Standard",
-                        labelName: "Current Standard"
+                        displayName: i18n.t("Current Standard"),
+                        header: i18n.t("Current Standard"),
+                        name: i18n.t("Current Standard"),
+                        labelName: i18n.t("Current Standard")
                     };
                 }
                 // Ensure admission date column is always visible
                 if (admissionDateId && col.id === admissionDateId) {
-                    return { ...col, visible: true, displayName: "Admission Date", header: "Admission Date", name: "Admission Date", labelName: "Admission Date" };
+                    return { ...col, visible: true, displayName: i18n.t("Admission Date"), header: i18n.t("Admission Date"), name: i18n.t("Admission Date"), labelName: i18n.t("Admission Date") };
                 }
                 return col;
             });
 
-        return [...filtered, enrollmentStatusColumn];
-    }, [columns, dataStoreData]);
+        return [...filtered, enrollmentStatusColumn, transferColumn];
+    }, [columns, dataStoreData, i18n]);
 
     const handleOpenModal = (e: Record<string, any>, type: "edit" | "delete",) => {
         add("trackedEntity", e?.row?.trackedEntity);
@@ -136,9 +154,6 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         setOpenInfoModal(true);
     };
 
-    useEffect(() => {
-        setPagination((prev: any) => ({ ...prev, totalPages: tableData?.pagination?.totalPages, totalElements: tableData?.pagination?.totalElements }))
-    }, [tableData])
 
     useEffect(() => {
         if (!openDeleteModal && !openEditModal) {
@@ -235,9 +250,14 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
             disableSelection: row.hasActiveEnrollment === 'Yes',
             hasActiveEnrollment: row.hasActiveEnrollment === 'Yes'
                 ? <Tag positive>{i18n.t('Enrolled')}</Tag>
-                : <Tag neutral>{i18n.t('Not Enrolled')}</Tag>
+                : <Tag neutral>{i18n.t('Not Enrolled')}</Tag>,
+            transferCategory: row.transferCategory === 'Transfer IN'
+                ? <Tag positive>{i18n.t('Transfer IN')}</Tag>
+                : row.transferCategory === 'Transfer OUT'
+                    ? <Tag negative>{i18n.t('Transfer OUT')}</Tag>
+                    : row.transferCategory === '_' ? "_" : row.transferCategory
         }));
-    }, [tableData.data, filteredRowsByDataElements]);
+    }, [tableData.data, filteredRowsByDataElements, i18n]);
 
     const selectedStudents = useMemo<SelectedStudent[]>(() => {
         return selectedRows
@@ -261,9 +281,16 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         ));
     }, [displayTableData]);
 
+    useEffect(() => {
+        setPagination((prev: any) => ({
+            ...prev,
+            totalPages: tableData?.pagination?.totalPages,
+            totalElements: displayTableData?.length ?? tableData?.pagination?.totalElements
+        }))
+    }, [tableData, displayTableData])
+
     // Admission date is a TEI attribute (full date like 2025-03-10).
-    // When an academic year is selected, filter by the first year only.
-    // Example: 2024-2025 => admissions in 2024 only.
+    // When an academic year is selected, filter by that year only.
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
     const defaultCalendarAcademicYear = (schoolCalendar as any)?.defaults?.academicYear;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
@@ -273,11 +300,11 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const academicYearCode = selectedCalendar?.academicYear?.code || academicYear;
     const firstYearMatch = typeof academicYearCode === 'string' ? academicYearCode.match(/\d{4}/) : null;
     const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN;
-    const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear - 1}-01-01` : undefined;
-    const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear - 1}-12-31` : undefined;
+    const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear}-01-01` : undefined;
+    const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear}-12-31` : undefined;
+    const hasAdmissionYearDateFilter = Boolean(academicYear && admissionDateAttribute && admissionYearStart && admissionYearEnd);
 
     useEffect(() => {
-        console.log("DataStoreData:", dataStoreData);
         if (school)
             void getData({
                 page: pagination?.page,
@@ -286,7 +313,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 orgUnit: school!,
                 attributeFilters: [
                     ...(filterState.attributes || []),
-                    ...(academicYear && admissionDateAttribute && admissionYearStart && admissionYearEnd
+                    ...(hasAdmissionYearDateFilter
                         ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
                         : [])
                 ],
@@ -294,9 +321,15 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 order: dataStoreData.defaults.defaultOrder,
                 academicYear: academicYear ?? undefined,
                 enrollmentStatusAcademicYear: defaultCalendarAcademicYear ?? academicYear ?? undefined,
-                academicYearDataElement: dataStoreData?.registration?.academicYear
+                academicYearDataElement: dataStoreData?.registration?.academicYear,
+                filterAdmissionByEventAcademicYear: Boolean(academicYear && !hasAdmissionYearDateFilter),
+                transferConfig: {
+                    transferProgramStage: dataStoreData?.transfer?.programStage,
+                    destinySchoolDataElement: dataStoreData?.transfer?.destinySchool
+                },
+                ouMode: "DESCENDANTS"
             })
-    }, [sectionType, filterState, pagination.page, pagination?.pageSize, refetch, school, academicYear])
+    }, [sectionType, filterState, pagination.page, pagination?.pageSize, refetch, school, academicYear, dataStoreData])
 
     return (
         <div style={{ height: "85vh" }}>
