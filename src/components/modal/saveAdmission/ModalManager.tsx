@@ -6,7 +6,7 @@ import EnrollSingleModal from "../enrollFromAdmission/EnrollSingleModal";
 import { TableDataRefetch } from "dhis2-semis-types"
 import { ModalManagerInterface } from "../../../types/modal/ModalProps";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
-import { ModalComponent } from "dhis2-semis-components";
+import { ModalComponent, useSchoolCalendarKey } from "dhis2-semis-components";
 import { admissionPostBody, admissionUpdateBody } from "../../../utils/admission";
 import useGetAdmissionUpdateInitialValues from "../../../hooks/form/useGetAdmissionUpdateInitialValues";
 import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams, applyAcademicYearPrefix } from "dhis2-semis-functions";
@@ -26,8 +26,9 @@ const GENERATE_TEI_ATTRIBUTE: any = {
 
 function ModalManager(props: ModalManagerInterface) {
     const engine = useDataEngine()
+    const schoolCalendar = useSchoolCalendarKey()
     const { urlParameters, useQuery } = useUrlParams();
-    const { school, schoolName } = urlParameters;
+    const { school, schoolName, academicYear } = urlParameters;
     const { saveTei, loading: saving } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
     const admission = useQuery.get("admission") as string
@@ -42,13 +43,21 @@ function ModalManager(props: ModalManagerInterface) {
 
     const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
     const studentIdentifierAttrId = dataStoreData?.admission?.studentIdentifier;
+    const academicYearAttrId = (dataStoreData as any)?.admission?.academicYearAttribute as string | undefined;
     const replaceYearPrefix = (dataStoreData as any)?.admission?.replaceIdentifierYearPrefix === true;
+    // Academic year the student is being admitted into: the selected year, falling
+    // back to the calendar default. Stored on the TEI and used for the LIN prefix.
+    const defaultCalendarAcademicYear = (schoolCalendar as any)?.defaults?.academicYear;
+    const selectedAcademicYear = academicYear ?? defaultCalendarAcademicYear;
     let allInitialValues = {
         orgUnit: school,
         registerschoolstaticform: schoolName ?? "",
         ...(admissionDateAttrId
             ? { [admissionDateAttrId]: format(new Date(), "yyyy-MM-dd") }
             : { admission_date: format(new Date(), "yyyy-MM-dd") }),
+        ...(academicYearAttrId && selectedAcademicYear
+            ? { [academicYearAttrId]: selectedAcademicYear }
+            : {}),
     }
 
     const [values, setValues] = useState<{ [key: string]: any }>({ ...allInitialValues });
@@ -133,6 +142,14 @@ function ModalManager(props: ModalManagerInterface) {
         setSubmitting(true);
         const formValues = { ...e };
 
+        // Store the academic year the student is being admitted into as a TEI attribute.
+        // Preserve any value already present (e.g. from an edit), otherwise use the
+        // selected/default academic year.
+        const admissionAcademicYear = (academicYearAttrId && formValues[academicYearAttrId]) || selectedAcademicYear;
+        if (academicYearAttrId && admissionAcademicYear) {
+            formValues[academicYearAttrId] = admissionAcademicYear;
+        }
+
         // If the student identifier attribute is configured and the user left it empty,
         // auto-generate a value before submitting.
         if (studentIdentifierAttrId && !formValues[studentIdentifierAttrId]) {
@@ -142,12 +159,12 @@ function ModalManager(props: ModalManagerInterface) {
             }
         }
 
-        // If year prefix replacement is enabled, apply next-year prefix from admission date
-        if (replaceYearPrefix && studentIdentifierAttrId && formValues[studentIdentifierAttrId]) {
-            const admDate = (admissionDateAttrId ? formValues[admissionDateAttrId] : formValues?.admission_date) || format(new Date(), "yyyy-MM-dd");
+        // If year prefix replacement is enabled, replace the first 4 digits of the
+        // identifier with the upper (later) year of the admission academic year.
+        if (replaceYearPrefix && studentIdentifierAttrId && formValues[studentIdentifierAttrId] && admissionAcademicYear) {
             formValues[studentIdentifierAttrId] = applyAcademicYearPrefix(
                 formValues[studentIdentifierAttrId],
-                admDate
+                admissionAcademicYear
             );
         }
 

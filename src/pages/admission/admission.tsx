@@ -7,7 +7,7 @@ import EnrollSingleModal from "../../components/modal/enrollFromAdmission/Enroll
 import { TableDataRefetch, Modules, ProgramConfig, D2I18n, VariablesTypes, CustomAttributeProps } from "dhis2-semis-types"
 import useGetSelectedProgram from '../../hooks/config/useGetSelectedKeys';
 import ModalManagerAdmissionDelete from '../../components/modal/deleteAdmission/ModalManager';
-import { useBuildForm, useHeader, useTableData, useUrlParams, useViewPortWidth } from "dhis2-semis-functions";
+import { useBuildForm, useGetEvents, useHeader, useTableData, useUrlParams, useViewPortWidth } from "dhis2-semis-functions";
 import AdmissionActionsButtons from "../../components/admissionButtons/AdmissionActionsButtons";
 import { formFields } from '../../utils/constants/form/admissionForm';
 import { enrollmentFormFields } from '../../utils/constants/form/enrollmentForm';
@@ -24,6 +24,12 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const [openEnrollModal, setOpenEnrollModal] = useState<boolean>(false)
     const [openInfoModal, setOpenInfoModal] = useState<boolean>(false)
     const [selectedInfoRow, setSelectedInfoRow] = useState<Record<string, any> | null>(null)
+    // Cross-school enrollment history for the info modal, fetched on demand so the
+    // list stays scoped to the selected school (fast) while the modal can still show
+    // a student's registrations across all org units.
+    const [infoHistory, setInfoHistory] = useState<Record<string, any>[] | null>(null)
+    const [infoHistoryLoading, setInfoHistoryLoading] = useState<boolean>(false)
+    const { getEvents } = useGetEvents()
     const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([])
     const [enrollStudentData, setEnrollStudentData] = useState<{ trackedEntityId: string; enrollmentId: string; activeEnrollmentToComplete: string; activeEnrollmentEnrolledAt: string; initialValues: Record<string, any> }>({ trackedEntityId: "", enrollmentId: "", activeEnrollmentToComplete: "", activeEnrollmentEnrolledAt: "", initialValues: {} })
     const { getData, tableData, loading } = useTableData({ module: Modules.Admission });
@@ -33,7 +39,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const { columns } = useHeader({ dataStoreData, programConfigData: program as unknown as ProgramConfig, programStage: "" });
     const { formData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Admission, schoolCalendar });
     const { formData: enrollFormData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Enrollment, schoolCalendar });
-    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier })
+    const admissionFormFields = formFields({ formFieldsData: formData, sectionName: sectionType!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier, academicYearAttributeId: (dataStoreData as any)?.admission?.academicYearAttribute })
     const enrollFormFields = enrollmentFormFields({ formFieldsData: enrollFormData, sectionName: sectionType! })
     const attributeFields = useMemo(() => (formData?.[0] ?? []).filter((f: any) => f.type === "attribute"), [formData])
 
@@ -49,7 +55,9 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         const gradeId = dataStoreData?.registration?.grade;
         const filterDataElementIds = dataStoreData?.filters?.dataElements?.map((f: any) => f.dataElement) ?? [];
         const admissionDateId = dataStoreData?.admission?.admissionDate;
-        const columnsToRemove = [sectionId, academicYearId, ...filterDataElementIds]
+        const academicYearAttributeId = (dataStoreData as any)?.admission?.academicYearAttribute;
+        // Show the academic year attribute column instead of the admission date column.
+        const columnsToRemove = [sectionId, academicYearId, admissionDateId, ...filterDataElementIds]
             .filter((id: any) => Boolean(id) && id !== gradeId);
 
         const enrollmentStatusColumn: CustomAttributeProps = {
@@ -102,9 +110,9 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                         labelName: i18n.t("Current Standard")
                     };
                 }
-                // Ensure admission date column is always visible
-                if (admissionDateId && col.id === admissionDateId) {
-                    return { ...col, visible: true, displayName: i18n.t("Admission Date"), header: i18n.t("Admission Date"), name: i18n.t("Admission Date"), labelName: i18n.t("Admission Date") };
+                // Ensure the academic year attribute column is always visible
+                if (academicYearAttributeId && col.id === academicYearAttributeId) {
+                    return { ...col, visible: true, displayName: i18n.t("Academic Year"), header: i18n.t("Academic Year"), name: i18n.t("Academic Year"), labelName: i18n.t("Academic Year") };
                 }
                 return col;
             });
@@ -147,11 +155,58 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         setOpenEnrollModal(true);
     };
 
-    const handleOpenInfoModal = (e: Record<string, any>) => {
+    const handleOpenInfoModal = async (e: Record<string, any>) => {
         const row = e?.row;
         if (!row) return;
         setSelectedInfoRow(row);
         setOpenInfoModal(true);
+
+        // The table's own registrationEvents are scoped to the selected school.
+        // Fetch this student's registration events across ALL org units so the
+        // history modal shows enrollments at other schools too. This is a single
+        // request for one student, only when the modal is opened.
+        const baseProgramStage = dataStoreData?.registration?.programStage;
+        if (!row.trackedEntity || !baseProgramStage) {
+            setInfoHistory(row.registrationEvents ?? []);
+            return;
+        }
+
+        setInfoHistoryLoading(true);
+        try {
+            const events = await getEvents({
+                program: program?.id as string,
+                programStage: baseProgramStage,
+                orgUnitMode: "ACCESSIBLE",
+                fields: "event,trackedEntity,enrollment,occurredAt,orgUnit,dataValues[dataElement,value]",
+                trackedEntities: row.trackedEntity,
+                paging: false,
+            });
+            // getEvents swallows request errors and returns undefined; fall back to
+            // the school-scoped events already on the row in that case.
+            if (!events) {
+                setInfoHistory(row.registrationEvents ?? []);
+                return;
+            }
+            const formatted = events
+                .sort((a: any, b: any) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
+                .map((ev: any) => ({
+                    id: ev.event,
+                    event: ev.event,
+                    trackedEntity: ev.trackedEntity,
+                    enrollment: ev.enrollment,
+                    orgUnitId: ev.orgUnit,
+                    ...(ev.dataValues ?? []).reduce((acc: Record<string, any>, dv: any) => {
+                        acc[dv.dataElement] = dv.value;
+                        return acc;
+                    }, {}),
+                }));
+            setInfoHistory(formatted);
+        } catch {
+            // Fall back to the school-scoped events already on the row.
+            setInfoHistory(row.registrationEvents ?? []);
+        } finally {
+            setInfoHistoryLoading(false);
+        }
     };
 
 
@@ -289,9 +344,11 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         }))
     }, [tableData, displayTableData])
 
-    // Admission date is a TEI attribute (full date like 2025-03-10).
-    // When an academic year is selected, filter by that year only.
+    // Academic year is stored as a TEI attribute on admission. When an academic year
+    // is selected and that attribute is configured, filter by it directly.
+    // Falls back to the admission-date range (legacy) when the attribute is not set.
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
+    const academicYearAttribute = (dataStoreData as any)?.admission?.academicYearAttribute as string | undefined;
     const defaultCalendarAcademicYear = (schoolCalendar as any)?.defaults?.academicYear;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
     const selectedCalendar = calendars.find((cal: any) =>
@@ -302,7 +359,8 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN;
     const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear}-01-01` : undefined;
     const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear}-12-31` : undefined;
-    const hasAdmissionYearDateFilter = Boolean(academicYear && admissionDateAttribute && admissionYearStart && admissionYearEnd);
+    const hasAcademicYearAttrFilter = Boolean(academicYear && academicYearAttribute);
+    const hasAdmissionYearDateFilter = Boolean(academicYear && !hasAcademicYearAttrFilter && admissionDateAttribute && admissionYearStart && admissionYearEnd);
 
     useEffect(() => {
         if (school)
@@ -313,16 +371,18 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 orgUnit: school!,
                 attributeFilters: [
                     ...(filterState.attributes || []),
-                    ...(hasAdmissionYearDateFilter
-                        ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
-                        : [])
+                    ...(hasAcademicYearAttrFilter
+                        ? [`${academicYearAttribute}:eq:${academicYear}`]
+                        : hasAdmissionYearDateFilter
+                            ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
+                            : [])
                 ],
                 baseProgramStage: dataStoreData?.registration?.programStage ?? "",
                 order: dataStoreData.defaults.defaultOrder,
                 academicYear: academicYear ?? undefined,
                 enrollmentStatusAcademicYear: defaultCalendarAcademicYear ?? academicYear ?? undefined,
                 academicYearDataElement: dataStoreData?.registration?.academicYear,
-                filterAdmissionByEventAcademicYear: Boolean(academicYear && !hasAdmissionYearDateFilter),
+                filterAdmissionByEventAcademicYear: Boolean(academicYear && !hasAcademicYearAttrFilter && !hasAdmissionYearDateFilter),
                 transferConfig: {
                     transferProgramStage: dataStoreData?.transfer?.programStage,
                     destinySchoolDataElement: dataStoreData?.transfer?.destinySchool,
@@ -401,16 +461,18 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                         {openInfoModal && (
                             <ModalComponent
                                 open={openInfoModal}
+                                loading={infoHistoryLoading}
                                 handleClose={() => {
                                     setOpenInfoModal(false);
                                     setSelectedInfoRow(null);
+                                    setInfoHistory(null);
                                 }}
                                 title={i18n.t("Enrollment History")}
                                 size="large"
                             >
                                 <EnrollmentDetailsComponent
                                     programConfig={program!}
-                                    enrollmentsData={selectedInfoRow?.registrationEvents ?? []}
+                                    enrollmentsData={infoHistory ?? selectedInfoRow?.registrationEvents ?? []}
                                     existingAcademicYear={Boolean(selectedInfoRow?.isEnrolledCurrentAcademicYear)}
                                     onSelectTei={selectedInfoRow ? () => {
                                         handleOpenEnrollModal({ row: selectedInfoRow });

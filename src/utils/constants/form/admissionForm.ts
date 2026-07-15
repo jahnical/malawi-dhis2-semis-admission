@@ -47,7 +47,7 @@ const staticForm = () => {
   }
 }
 
-function formFields({ formFieldsData, sectionName, admissionDateAttributeId, studentIdentifierAttributeId }: { formFieldsData: any[], sectionName: string, admissionDateAttributeId?: string, studentIdentifierAttributeId?: string }) {
+function formFields({ formFieldsData, sectionName, admissionDateAttributeId, studentIdentifierAttributeId, academicYearAttributeId }: { formFieldsData: any[], sectionName: string, admissionDateAttributeId?: string, studentIdentifierAttributeId?: string, academicYearAttributeId?: string }) {
 
   const [studentAttributes = []] = formFieldsData;
 
@@ -61,8 +61,22 @@ function formFields({ formFieldsData, sectionName, admissionDateAttributeId, stu
     ? { ...configuredAdmissionDateAttr, labelName: "Admission date", displayName: "Admission date", header: "Admission date", name: configuredAdmissionDateAttr.id }
     : staticForm().admissionDate;
 
-  const filteredStudentAttributes = configuredAdmissionDateAttr
-    ? studentAttributes.filter((attr: any) => attr.id !== admissionDateAttributeId)
+  // If a configured academic year attribute exists, show it in Admission Details
+  // (below the school) and remove it from Student Profile to avoid duplication.
+  const configuredAcademicYearAttr = academicYearAttributeId
+    ? studentAttributes.find((attr: any) => attr.id === academicYearAttributeId)
+    : null;
+
+  const academicYearField = configuredAcademicYearAttr
+    ? { ...configuredAcademicYearAttr, labelName: "Academic Year", displayName: "Academic Year", header: "Academic Year", name: configuredAcademicYearAttr.id }
+    : null;
+
+  const idsToRemoveFromProfile = new Set(
+    [admissionDateAttributeId, academicYearAttributeId].filter(Boolean)
+  );
+
+  const filteredStudentAttributes = idsToRemoveFromProfile.size
+    ? studentAttributes.filter((attr: any) => !idsToRemoveFromProfile.has(attr.id))
     : studentAttributes;
 
   // For the configured student identifier attribute, make it editable (not disabled)
@@ -82,6 +96,7 @@ function formFields({ formFieldsData, sectionName, admissionDateAttributeId, stu
       visible: true,
       fields: [
         staticForm().registeringSchool,
+        ...(academicYearField ? [academicYearField] : []),
         admissionDateField
       ]
     },

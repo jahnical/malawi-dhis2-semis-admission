@@ -51,6 +51,7 @@ function AdmissionActionsButtons({
     const { hide, show } = useShowAlerts()
     const setRefetch = useSetRecoilState(TableDataRefetch);
     const admissionDateAttribute = dataStoreData?.admission?.admissionDate;
+    const academicYearAttribute = (dataStoreData as any)?.admission?.academicYearAttribute as string | undefined;
     const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
     const selectedCalendar = calendars.find((cal: any) =>
         cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
@@ -60,9 +61,12 @@ function AdmissionActionsButtons({
     const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN;
     const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear -1}-01-01` : undefined;
     const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear -1}-12-31` : undefined;
-    const filters = academicYear !== null && admissionDateAttribute && admissionYearStart && admissionYearEnd
-        ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
-        : [];
+    // Prefer the academic year attribute filter; fall back to the legacy date range.
+    const filters = academicYear != null && academicYearAttribute
+        ? [`${academicYearAttribute}:eq:${academicYear}`]
+        : academicYear != null && admissionDateAttribute && admissionYearStart && admissionYearEnd
+            ? [`${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`]
+            : [];
 
 
     const showAlert = (error: any) => {
@@ -232,7 +236,7 @@ function AdmissionActionsButtons({
                 formVariablesFields={formData}
                 initialValues={formInitialValues}
                 setFormInitialValues={setFormInitialValues}
-                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier })}
+                formFields={formFields({ formFieldsData: formData, sectionName: sectionName!, admissionDateAttributeId: dataStoreData?.admission?.admissionDate, studentIdentifierAttributeId: dataStoreData?.admission?.studentIdentifier, academicYearAttributeId: (dataStoreData as any)?.admission?.academicYearAttribute })}
             />}
 
             {openSearchAdmission &&
