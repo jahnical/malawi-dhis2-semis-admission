@@ -36,6 +36,19 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const [filterState, setFilterState] = useState<{ dataElements: any, attributes: any }>({ attributes: [], dataElements: [] });
     const refetch = useRecoilValue(TableDataRefetch);
     const [pagination, setPagination] = useState<any>({ page: 1, pageSize: 50, totalPages: 0, totalElements: 0 })
+    // Client-side sorting: the full dataset is fetched once, so sorting by any column
+    // (identifier, name, etc.) is applied in-memory without re-fetching.
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc')
+    const [orderBy, setOrderBy] = useState<string>('')
+    const createSortHandler = (columnId: string) => () => {
+        if (orderBy === columnId) {
+            setOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+        } else {
+            setOrderBy(columnId)
+            setOrder('asc')
+        }
+        setPagination((prev: any) => ({ ...prev, page: 1 }))
+    }
     const { columns } = useHeader({ dataStoreData, programConfigData: program as unknown as ProgramConfig, programStage: "" });
     const { formData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Admission, schoolCalendar });
     const { formData: enrollFormData } = useBuildForm({ dataStoreData, programData: program, module: Modules.Enrollment, schoolCalendar });
@@ -296,10 +309,35 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
         );
     }, [tableData.data, dataElementFilterExpressions]);
 
+    // Sort the full (filtered) set by the user-selected column, on raw values (before
+    // the enrollment-status/transfer chips are rendered). Numeric-aware, empties last.
+    const sortedRows = useMemo(() => {
+        if (!orderBy) return filteredRowsByDataElements;
+        const copy = [...filteredRowsByDataElements];
+        copy.sort((a: Record<string, any>, b: Record<string, any>) => {
+            const av = a?.[orderBy];
+            const bv = b?.[orderBy];
+            const aEmpty = av === undefined || av === null || av === '';
+            const bEmpty = bv === undefined || bv === null || bv === '';
+            if (aEmpty && bEmpty) return 0;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+            const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+            return order === 'asc' ? cmp : -cmp;
+        });
+        return copy;
+    }, [filteredRowsByDataElements, orderBy, order]);
+
+    // Client-side pagination: slice the current page out of the sorted set.
+    const pagedRows = useMemo(() => {
+        const size = pagination?.pageSize || sortedRows.length || 1;
+        const start = ((pagination?.page || 1) - 1) * size;
+        return sortedRows.slice(start, start + size);
+    }, [sortedRows, pagination?.page, pagination?.pageSize]);
+
     // Transform table data to render enrollment status as a colored chip
     const displayTableData = useMemo(() => {
-        console.log("Raw table data:", tableData.data);
-        return filteredRowsByDataElements.map((row: any) => ({
+        return pagedRows.map((row: any) => ({
             ...row,
             isEnrolledCurrentAcademicYear: row.hasActiveEnrollment === 'Yes',
             disableSelection: row.hasActiveEnrollment === 'Yes',
@@ -312,7 +350,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                     ? <Tag negative>{i18n.t('Transfer OUT')}</Tag>
                     : row.transferCategory === '_' ? "_" : row.transferCategory
         }));
-    }, [tableData.data, filteredRowsByDataElements, i18n]);
+    }, [pagedRows, i18n]);
 
     const selectedStudents = useMemo<SelectedStudent[]>(() => {
         return selectedRows
@@ -337,12 +375,19 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     }, [displayTableData]);
 
     useEffect(() => {
-        setPagination((prev: any) => ({
-            ...prev,
-            totalPages: tableData?.pagination?.totalPages,
-            totalElements: displayTableData?.length ?? tableData?.pagination?.totalElements
-        }))
-    }, [tableData, displayTableData])
+        setPagination((prev: any) => {
+            const size = prev.pageSize || sortedRows.length || 1;
+            const totalPages = Math.max(1, Math.ceil(sortedRows.length / size));
+            return {
+                ...prev,
+                totalElements: sortedRows.length,
+                totalPages,
+                // Clamp the page if the (new) result set has fewer pages than the
+                // page we were on (e.g. after filtering narrows the data).
+                page: prev.page > totalPages ? 1 : prev.page,
+            };
+        });
+    }, [sortedRows, pagination?.pageSize])
 
     // Academic year is stored as a TEI attribute on admission. When an academic year
     // is selected and that attribute is configured, filter by it directly.
@@ -363,10 +408,10 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const hasAdmissionYearDateFilter = Boolean(academicYear && !hasAcademicYearAttrFilter && admissionDateAttribute && admissionYearStart && admissionYearEnd);
 
     useEffect(() => {
-        if (school)
+        if (school) {
+            // New school/filter/year → start from the first page.
+            setPagination((prev: any) => ({ ...prev, page: 1 }))
             void getData({
-                page: pagination?.page,
-                pageSize: pagination?.pageSize,
                 program: program?.id as string,
                 orgUnit: school!,
                 attributeFilters: [
@@ -389,7 +434,10 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 },
                 ouMode: "DESCENDANTS"
             })
-    }, [sectionType, filterState, pagination.page, pagination?.pageSize, refetch, school, academicYear, dataStoreData])
+        }
+        // Pagination.page/pageSize intentionally excluded: the full dataset is fetched
+        // once here, then paged/sorted on the client so navigation doesn't re-fetch.
+    }, [sectionType, filterState, refetch, school, academicYear, dataStoreData])
 
     return (
         <div style={{ height: "85vh" }}>
@@ -424,6 +472,10 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                             rowAction={rowsActions}
                             defaultFilterNumber={3}
                             showRowActions
+                            sortable
+                            order={order}
+                            orderBy={orderBy}
+                            createSortHandler={createSortHandler}
                             filterState={filterState}
                             loading={loading}
                             rightElements={
