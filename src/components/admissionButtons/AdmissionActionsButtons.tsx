@@ -5,7 +5,7 @@ import styles from './admissionActionsButtons.module.css'
 import ModalManager from '../modal/saveAdmission/ModalManager';
 import { useBuildForm, useGetSectionTypeLabel, useUrlParams, useShowAlerts, getSectionLabels } from 'dhis2-semis-functions';
 import { D2I18n, Modules, TableDataRefetch } from 'dhis2-semis-types'
-import { IconAddCircle24, Button, ButtonStrip, IconUserGroup16, IconSearch24 } from "@dhis2/ui";
+import { IconAddCircle24, Button, ButtonStrip, IconUserGroup16, IconSearch24, IconDownload24 } from "@dhis2/ui";
 import { ModalSearchAdmissionContent, DataExporter, DataImporter, CustomDropdown as DropdownButton, useSchoolCalendarKey } from 'dhis2-semis-components';
 import { formFields } from '../../utils/constants/form/admissionForm';
 import useGetSelectedKeys from '../../hooks/config/useGetSelectedKeys';
@@ -129,25 +129,6 @@ function AdmissionActionsButtons({
             divider: false,
             disabled: false,
         },
-        {
-            label: <DataExporter
-                Form={Form}
-                baseURL={baseUrl}
-                eventFilters={filters}
-                label={i18n.t('Export Existing {{section}}', {
-                    section: sectionLabels.plural,
-                })}
-                module={Modules.Admission}
-                onError={(e: any) => { showAlert(e) }}
-                programConfig={programData!}
-                sectionType={sectionName}
-                selectedSectionDataStore={dataStoreData}
-                empty={false}
-                stagesToExport={[]}
-            />,
-            divider: false,
-            disabled: false,
-        },
     ];
 
     const onSelectTeiForEnrollment = (payload: {
@@ -223,6 +204,25 @@ function AdmissionActionsButtons({
                             disabled={!!(orgUnit == undefined || academicYear == undefined)}
                             icon={<IconUserGroup16 />}
                             options={admissionOptions}
+                        />
+                    </span>
+                </Tooltip>
+
+                <Tooltip title={orgUnit == undefined || academicYear == undefined ? i18n.t("Please select an organisation unit and academic year") : ""}>
+                    <span>
+                        <DataExporter
+                            Form={Form}
+                            baseURL={baseUrl}
+                            eventFilters={filters}
+                            label={i18n.t('Export {{section}}', { section: sectionLabels.plural })}
+                            module={Modules.Admission}
+                            onError={(e: any) => { showAlert(e) }}
+                            programConfig={programData!}
+                            sectionType={sectionName}
+                            selectedSectionDataStore={dataStoreData}
+                            empty={false}
+                            stagesToExport={[]}
+                            button={{ icon: <IconDownload24 />, disabled: orgUnit == undefined || academicYear == undefined }}
                         />
                     </span>
                 </Tooltip>
