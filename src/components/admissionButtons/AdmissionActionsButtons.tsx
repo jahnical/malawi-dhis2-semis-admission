@@ -3,7 +3,7 @@ import { Form } from "react-final-form";
 import { Tooltip } from '@mui/material';
 import styles from './admissionActionsButtons.module.css'
 import ModalManager from '../modal/saveAdmission/ModalManager';
-import { useBuildForm, useGetSectionTypeLabel, useUrlParams, useShowAlerts } from 'dhis2-semis-functions';
+import { useBuildForm, useGetSectionTypeLabel, useUrlParams, useShowAlerts, getSectionLabels } from 'dhis2-semis-functions';
 import { D2I18n, Modules, TableDataRefetch } from 'dhis2-semis-types'
 import { IconAddCircle24, Button, ButtonStrip, IconUserGroup16, IconSearch24 } from "@dhis2/ui";
 import { ModalSearchAdmissionContent, DataExporter, DataImporter, CustomDropdown as DropdownButton, useSchoolCalendarKey } from 'dhis2-semis-components';
@@ -32,6 +32,7 @@ function AdmissionActionsButtons({
 }) {
     const { urlParameters } = useUrlParams();
     const { sectionName } = useGetSectionTypeLabel();
+    const sectionLabels = getSectionLabels(sectionName, i18n);
     const schoolCalendar = useSchoolCalendarKey()
     const { dataStoreData, program: programData } = useGetSelectedKeys()
     const [formInitialValues, setFormInitialValues] = useState({})
@@ -79,7 +80,7 @@ function AdmissionActionsButtons({
             label: <DataImporter
                 baseURL={baseUrl}
                 label={i18n.t('Admit new {{section}}', {
-                    section: `${i18n.t(sectionName)}s`,
+                    section: sectionLabels.plural,
                 })}
                 module={Modules.Admission}
                 onError={(e: any) => { showAlert(e) }}
@@ -97,7 +98,7 @@ function AdmissionActionsButtons({
             label: <DataImporter
                 baseURL={baseUrl}
                 label={i18n.t('Update existing {{section}}', {
-                    section: `${i18n.t(sectionName)}s`,
+                    section: sectionLabels.plural,
                 })}
                 module={Modules.Admission}
                 onError={(e: any) => { showAlert(e) }}
@@ -134,7 +135,7 @@ function AdmissionActionsButtons({
                 baseURL={baseUrl}
                 eventFilters={filters}
                 label={i18n.t('Export Existing {{section}}', {
-                    section: `${i18n.t(sectionName)}s`,
+                    section: sectionLabels.plural,
                 })}
                 module={Modules.Admission}
                 onError={(e: any) => { showAlert(e) }}
@@ -177,7 +178,7 @@ function AdmissionActionsButtons({
                             <span className={styles.work_buttons_text}>
                                 {
                                     i18n.t('Search by {{section}}', {
-                                        section: `${i18n.t(sectionName)}s`,
+                                        section: sectionLabels.plural,
                                     })
                                 }
                             </span>
@@ -192,7 +193,7 @@ function AdmissionActionsButtons({
                             <span className={styles.work_buttons_text}>
                                 {
                                     i18n.t('Admit {{section}}', {
-                                        section: `${i18n.t(sectionName)}`,
+                                        section: sectionLabels.singular,
                                     })
                                 }
                             </span>
