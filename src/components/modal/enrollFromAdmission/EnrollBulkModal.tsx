@@ -87,6 +87,7 @@ function EnrollBulkModal({
 
         saveTei({
             data: { trackedEntities },
+            program: programData,
             messages: {
                 error: i18n.t("Could not complete bulk enrollment."),
                 sucess: i18n.t("{{count}} {{section}} enrolled successfully", {

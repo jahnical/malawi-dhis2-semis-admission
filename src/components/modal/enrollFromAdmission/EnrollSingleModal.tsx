@@ -101,6 +101,7 @@ function EnrollSingleModal({
 
         saveTei({
             data,
+            program: programData,
             messages: {
                 error: i18n.t("Could not complete enrollment."),
                 sucess: i18n.t("Student enrolled successfully"),
