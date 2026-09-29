@@ -4,7 +4,7 @@ import { useRecoilState } from "recoil";
 import { TableDataRefetch } from "dhis2-semis-types";
 import { Form } from "react-final-form";
 import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, CustomForm } from "dhis2-semis-components";
-import { useSaveTei, useUrlParams, useGetSectionTypeLabel } from "dhis2-semis-functions";
+import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { useConfig } from "@dhis2/app-runtime";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
@@ -45,6 +45,7 @@ function EnrollBulkModal({
     const { school: orgUnitId, schoolName } = urlParameters;
     const { saveTei, loading } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
+    const sectionLabels = getSectionLabels(sectionName, i18n);
     const [, setRefetch] = useRecoilState(TableDataRefetch);
     const { program: programData, dataStoreData } = useGetSelectedKeys();
     const schoolCalendar = useSchoolCalendarKey();
@@ -102,11 +103,12 @@ function EnrollBulkModal({
 
         saveTei({
             data: { trackedEntities },
+            program: programData,
             messages: {
                 error: i18n.t("Could not complete bulk enrollment."),
-                sucess: i18n.t("{{count}} {{section}}s enrolled successfully", {
+                sucess: i18n.t("{{count}} {{section}} enrolled successfully", {
                     count: selectedStudents.length,
-                    section: i18n.t(sectionName),
+                    section: sectionLabels.plural,
                 }),
             },
             handleComplete: () => {
@@ -121,9 +123,9 @@ function EnrollBulkModal({
             open={open}
             handleClose={handleClose}
             loading={!!loading}
-            title={i18n.t("Enroll {{count}} Admitted {{section}}s", {
+            title={i18n.t("Enroll {{count}} admitted {{section}}", {
                 count: selectedStudents.length,
-                section: i18n.t(sectionName),
+                section: sectionLabels.plural,
             })}
         >
             <WithPadding>

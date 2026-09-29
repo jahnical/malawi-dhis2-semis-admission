@@ -5,7 +5,7 @@ import { useRecoilState } from "recoil";
 import { useConfig } from "@dhis2/app-runtime";
 import { TableDataRefetch } from "dhis2-semis-types";
 import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, CustomForm } from "dhis2-semis-components";
-import { useSaveTei, useUrlParams, useGetSectionTypeLabel, useGetAttributes, useGetPatternCode, RulesEngine } from "dhis2-semis-functions";
+import { useSaveTei, useUrlParams, useGetSectionTypeLabel, useGetAttributes, useGetPatternCode, RulesEngine, getSectionLabels } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
 import { useEnrollmentYearValidation, useShowAlerts } from 'dhis2-semis-functions';
@@ -37,6 +37,7 @@ function EnrollSingleModal({
     const { school: orgUnitId, schoolName } = urlParameters;
     const { saveTei, loading: saving } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
+    const sectionLabels = getSectionLabels(sectionName, i18n);
     const [refetch, setRefetch] = useRecoilState(TableDataRefetch);
     const { program: programData, dataStoreData } = useGetSelectedKeys();
     const schoolCalendar = useSchoolCalendarKey();
@@ -116,6 +117,7 @@ function EnrollSingleModal({
 
         saveTei({
             data,
+            program: programData,
             messages: {
                 error: i18n.t("Could not complete enrollment."),
                 sucess: i18n.t("Student enrolled successfully"),
@@ -137,7 +139,7 @@ function EnrollSingleModal({
             open={open}
             handleClose={handleClose}
             loading={loadingCodes}
-            title={i18n.t("Enroll Admitted {{section}}", { section: i18n.t(sectionName) })}
+            title={i18n.t("Enroll Admitted {{section}}", { section: sectionLabels.title })}
         >
             <WithPadding>
                 <WithBorder type="all">

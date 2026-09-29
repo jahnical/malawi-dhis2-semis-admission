@@ -9,7 +9,7 @@ import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { ModalComponent, useSchoolCalendarKey } from "dhis2-semis-components";
 import { admissionPostBody, admissionUpdateBody } from "../../../utils/admission";
 import useGetAdmissionUpdateInitialValues from "../../../hooks/form/useGetAdmissionUpdateInitialValues";
-import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams, applyAcademicYearPrefix } from "dhis2-semis-functions";
+import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams, applyAcademicYearPrefix, getSectionLabels } from "dhis2-semis-functions";
 import { useDataEngine } from "@dhis2/app-runtime";
 
 const GENERATE_TEI_ATTRIBUTE: any = {
@@ -39,6 +39,7 @@ function ModalManager(props: ModalManagerInterface) {
     const { errorLoading, returnPattern, loadingCodes, generatedVariables } = useGetPatternCode();
     const { getPatternCodeParams } = useGetPatternCodeParams();
     const { open, setOpen, saveMode, initialValues: initialValuesFromSearch, formFields = [], formVariablesFields, setFormInitialValues, i18n } = props;
+    const sectionLabels = getSectionLabels(sectionName, i18n);
     const { getInitialValues, initialValues: updateInitialValues, loading: initialValuesLoading } = useGetAdmissionUpdateInitialValues()
 
     const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
@@ -199,6 +200,7 @@ function ModalManager(props: ModalManagerInterface) {
 
         saveTei({
             data: data(),
+            program: programData,
             messages: {
                 error: `${i18n.t("Could not conclude the opertation.")}`,
                 sucess: `${i18n.t("Operation concluded successfully")}`,
@@ -229,7 +231,7 @@ function ModalManager(props: ModalManagerInterface) {
             handleClose={handleCloseModal}
             loading={loadingCodes || initialValuesLoading}
             title={i18n.t('Single {{section}} Admission {{mode}}', {
-                section: i18n.t(sectionName),
+                section: sectionLabels.title,
                 mode: saveMode === 'UPDATE' ? i18n.t('Update') : ''
             })}
         >
