@@ -40,6 +40,7 @@ function EnrollSingleModal({
     const [refetch, setRefetch] = useRecoilState(TableDataRefetch);
     const { program: programData, dataStoreData } = useGetSelectedKeys();
     const schoolCalendar = useSchoolCalendarKey();
+    const enrollmentAcademicYearField = academicYearDataElement || dataStoreData.registration.academicYear || schoolCalendar?.academicYear;
     const validateYear = useEnrollmentYearValidation();
     const { show } = useShowAlerts();
     const [validating, setValidating] = useState(false);
@@ -90,7 +91,7 @@ function EnrollSingleModal({
     async function onSubmit(e: Record<string, any>) {
         setValidating(true);
         try {
-            await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[academicYearDataElement || dataStoreData.registration.academicYear], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, sectionType: sectionName });
+            await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[enrollmentAcademicYearField], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, academicYearField: enrollmentAcademicYearField, sectionType: sectionName });
         } catch (error: any) {
             show({ message: i18n.t(error.message), type: { critical: true } });
             return;
@@ -148,7 +149,7 @@ function EnrollSingleModal({
                             baseUrl={baseUrl}
                             withButtons={true}
                             formValues={values}
-                            formFields={validateYear.withFieldError(updatedVariables, academicYearDataElement || dataStoreData.registration.academicYear, values[academicYearDataElement || dataStoreData.registration.academicYear], message => i18n.t(message))}
+                            formFields={validateYear.withFieldError(updatedVariables, enrollmentAcademicYearField, values[enrollmentAcademicYearField], message => i18n.t(message))}
                             onInputChange={handleChange}
                             setFormValues={setValues}
                             initialValues={{
