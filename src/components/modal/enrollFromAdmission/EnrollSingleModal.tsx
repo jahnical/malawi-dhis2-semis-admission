@@ -8,6 +8,8 @@ import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, Custo
 import { useSaveTei, useUrlParams, useGetSectionTypeLabel, useGetAttributes, useGetPatternCode, RulesEngine } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
+import { useEnrollmentYearValidation, useShowAlerts } from 'dhis2-semis-functions';
+import { useSchoolCalendarKey } from 'dhis2-semis-components';
 
 interface EnrollSingleModalProps {
     i18n: any;
@@ -36,7 +38,11 @@ function EnrollSingleModal({
     const { saveTei, loading: saving } = useSaveTei();
     const { sectionName } = useGetSectionTypeLabel();
     const [refetch, setRefetch] = useRecoilState(TableDataRefetch);
-    const { program: programData } = useGetSelectedKeys();
+    const { program: programData, dataStoreData } = useGetSelectedKeys();
+    const schoolCalendar = useSchoolCalendarKey();
+    const validateYear = useEnrollmentYearValidation();
+    const { show } = useShowAlerts();
+    const [validating, setValidating] = useState(false);
     const programStagesToSave = useGetUsedProgramStages({ sectionType: sectionName });
     const { attributes = [] } = useGetAttributes({ programData: programData! });
     const { errorLoading, returnPattern, loadingCodes, generatedVariables } = useGetPatternCode();
@@ -81,7 +87,16 @@ function EnrollSingleModal({
         // Handled by CustomForm / react-final-form
     };
 
-    function onSubmit(e: Record<string, any>): void {
+    async function onSubmit(e: Record<string, any>) {
+        setValidating(true);
+        try {
+            await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[academicYearDataElement || dataStoreData.registration.academicYear], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, sectionType: sectionName });
+        } catch (error: any) {
+            show({ message: i18n.t(error.message), type: { critical: true } });
+            return;
+        } finally {
+            setValidating(false);
+        }
         const data = enrollmentPostBody({
             values: e,
             orgUnitId: orgUnitId!,
@@ -128,7 +143,7 @@ function EnrollSingleModal({
                     <WithPadding>
                         <CustomForm
                             Form={Form}
-                            loading={saving!}
+                            loading={saving || validating}
                             trackedEntity={trackedEntityId}
                             baseUrl={baseUrl}
                             withButtons={true}
@@ -142,7 +157,7 @@ function EnrollSingleModal({
                                 ...externalInitialValues,
                             }}
                             onCancel={handleClose}
-                            onFormSubtmit={(e: Record<string, any>) => { onSubmit(e); }}
+                            onFormSubtmit={onSubmit}
                         />
                     </WithPadding>
                 </WithBorder>
