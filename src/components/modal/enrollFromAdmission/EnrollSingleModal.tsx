@@ -90,7 +90,7 @@ function EnrollSingleModal({
     async function onSubmit(e: Record<string, any>) {
         setValidating(true);
         try {
-            await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[academicYearDataElement || dataStoreData.registration.academicYear], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, sectionType: sectionName });
+            await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[academicYearDataElement || dataStoreData.registration.academicYear], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, sectionType: sectionName });
         } catch (error: any) {
             show({ message: i18n.t(error.message), type: { critical: true } });
             return;
@@ -148,7 +148,7 @@ function EnrollSingleModal({
                             baseUrl={baseUrl}
                             withButtons={true}
                             formValues={values}
-                            formFields={updatedVariables}
+                            formFields={validateYear.withFieldError(updatedVariables, academicYearDataElement || dataStoreData.registration.academicYear, values[academicYearDataElement || dataStoreData.registration.academicYear], message => i18n.t(message))}
                             onInputChange={handleChange}
                             setFormValues={setValues}
                             initialValues={{
