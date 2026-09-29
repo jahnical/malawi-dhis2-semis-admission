@@ -11,6 +11,7 @@ import { admissionPostBody, admissionUpdateBody } from "../../../utils/admission
 import useGetAdmissionUpdateInitialValues from "../../../hooks/form/useGetAdmissionUpdateInitialValues";
 import { useGetAttributes, useGetPatternCode, useSaveTei, useUrlParams, useGetSectionTypeLabel, RulesEngine, useGetPatternCodeParams, applyAcademicYearPrefix, getSectionLabels } from "dhis2-semis-functions";
 import { useDataEngine } from "@dhis2/app-runtime";
+import { useShowAlerts } from 'dhis2-semis-functions';
 
 const GENERATE_TEI_ATTRIBUTE: any = {
     results: {
@@ -30,6 +31,7 @@ function ModalManager(props: ModalManagerInterface) {
     const { urlParameters, useQuery } = useUrlParams();
     const { school, schoolName, academicYear } = urlParameters;
     const { saveTei, loading: saving } = useSaveTei();
+    const { show } = useShowAlerts();
     const { sectionName } = useGetSectionTypeLabel();
     const admission = useQuery.get("admission") as string
     const [refetch, setRefetch] = useRecoilState(TableDataRefetch);
@@ -141,6 +143,7 @@ function ModalManager(props: ModalManagerInterface) {
 
     async function onSubmit(e: Record<string, any>): Promise<void> {
         setSubmitting(true);
+        try {
         const formValues = { ...e };
 
         // Store the academic year the student is being admitted into as a TEI attribute.
@@ -198,7 +201,7 @@ function ModalManager(props: ModalManagerInterface) {
             }
         };
 
-        saveTei({
+        await saveTei({
             data: data(),
             program: programData,
             messages: {
@@ -206,7 +209,6 @@ function ModalManager(props: ModalManagerInterface) {
                 sucess: `${i18n.t("Operation concluded successfully")}`,
             },
             handleComplete: () => {
-                setSubmitting(false);
                 setRefetch(!refetch);
                 if (saveMode === "CREATE" && teiIdForEnrollment) {
                     setAdmittedTeiId(teiIdForEnrollment);
@@ -217,6 +219,11 @@ function ModalManager(props: ModalManagerInterface) {
                 }
             },
         });
+        } catch (error: any) {
+            show({ message: `${i18n.t('Could not conclude the opertation.')}: ${error?.message ?? error}`, type: { critical: true } });
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     if (errorLoading) {
