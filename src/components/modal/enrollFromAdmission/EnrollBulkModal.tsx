@@ -8,6 +8,8 @@ import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels } fr
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { useConfig } from "@dhis2/app-runtime";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
+import { useEnrollmentYearValidation, useShowAlerts } from 'dhis2-semis-functions';
+import { useSchoolCalendarKey } from 'dhis2-semis-components';
 
 export interface SelectedStudent {
     trackedEntity: string;
@@ -45,7 +47,12 @@ function EnrollBulkModal({
     const { sectionName } = useGetSectionTypeLabel();
     const sectionLabels = getSectionLabels(sectionName, i18n);
     const [, setRefetch] = useRecoilState(TableDataRefetch);
-    const { program: programData } = useGetSelectedKeys();
+    const { program: programData, dataStoreData } = useGetSelectedKeys();
+    const schoolCalendar = useSchoolCalendarKey();
+    const enrollmentAcademicYearField = academicYearDataElement || dataStoreData.registration.academicYear || schoolCalendar?.academicYear;
+    const validateYear = useEnrollmentYearValidation();
+    const { show } = useShowAlerts();
+    const [validating, setValidating] = React.useState(false);
     const programStagesToSave = useGetUsedProgramStages({ sectionType: sectionName });
 
     const defaultInitialValues: Record<string, any> = {
@@ -62,7 +69,16 @@ function EnrollBulkModal({
         // Handled by CustomForm / react-final-form
     };
 
-    function onSubmit(sharedValues: Record<string, any>) {
+    async function onSubmit(sharedValues: Record<string, any>) {
+        setValidating(true);
+        try {
+            await validateYear({ students: selectedStudents, enrollmentYear: sharedValues[enrollmentAcademicYearField], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, academicYearField: enrollmentAcademicYearField, sectionType: sectionName });
+        } catch (error: any) {
+            show({ message: i18n.t(error.message), type: { critical: true } });
+            return;
+        } finally {
+            setValidating(false);
+        }
         const enrollmentDate = sharedValues?.enrollment_date || format(new Date(), "yyyy-MM-dd");
 
         const trackedEntities = selectedStudents.map((student) => {
@@ -117,11 +133,11 @@ function EnrollBulkModal({
                     <WithPadding>
                         <CustomForm
                             Form={Form}
-                            loading={!!loading}
+                            loading={!!loading || validating}
                             baseUrl={baseUrl}
                             withButtons={true}
                             formValues={values}
-                            formFields={formFields}
+                            formFields={validateYear.withFieldError(formFields, enrollmentAcademicYearField, values[enrollmentAcademicYearField], message => i18n.t(message))}
                             onInputChange={handleChange}
                             setFormValues={setValues}
                             initialValues={defaultInitialValues}
