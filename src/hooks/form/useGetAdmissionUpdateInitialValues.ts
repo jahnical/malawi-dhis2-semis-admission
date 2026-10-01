@@ -9,6 +9,7 @@ function useGetAdmissionUpdateInitialValues() {
     const [error, setError] = useState<boolean>(false)
     const [loading, setLoading] = useState<boolean>(false)
     const [initialValues, setInitialValues] = useState<any>({})
+    const [existingEnrollment, setExistingEnrollment] = useState<any>()
     const { program: programId } = dataStoreData
 
     const getInitialValues = async (trackedEntity: string, admission: string) => {
@@ -21,14 +22,17 @@ function useGetAdmissionUpdateInitialValues() {
                     const occurredAtFormatted = response?.results?.occurredAt
                         ? format(new Date(response?.results?.occurredAt), "yyyy-MM-dd")
                         : undefined;
+                    const savedAttributes = attributes(response?.results?.attributes ?? [])
+                    setExistingEnrollment(response?.results)
                     setInitialValues({
                         program: programId,
                         admission: admission,
                         trackedEntity: trackedEntity,
-                        ...attributes(response?.results?.attributes ?? []),
+                        ...savedAttributes,
                         orgUnit: response?.results?.orgUnit,
                         admission_date: occurredAtFormatted,
-                        ...(admissionDateAttrId && occurredAtFormatted ? { [admissionDateAttrId]: occurredAtFormatted } : {}),
+                        // Once enrolled, occurredAt is the academic year start, so prefer the saved admission date
+                        ...(admissionDateAttrId && !savedAttributes[admissionDateAttrId] && occurredAtFormatted ? { [admissionDateAttrId]: occurredAtFormatted } : {}),
                     })
                 })
                 .catch(() => {
@@ -42,7 +46,7 @@ function useGetAdmissionUpdateInitialValues() {
         }
     }
 
-    return { getInitialValues, initialValues, loading, error }
+    return { getInitialValues, initialValues, existingEnrollment, loading, error }
 }
 
 export default useGetAdmissionUpdateInitialValues

@@ -43,11 +43,8 @@ function AdmissionActionsButtons({
     const [openEnrollSingleModal, setOpenEnrollSingleModal] = useState<boolean>(false);
     const [enrollStudentData, setEnrollStudentData] = useState<{
         trackedEntityId: string;
-        enrollmentId?: string;
-        activeEnrollmentToComplete?: string;
-        activeEnrollmentEnrolledAt?: string;
         initialValues: Record<string, any>;
-    }>({ trackedEntityId: "", enrollmentId: undefined, activeEnrollmentToComplete: undefined, activeEnrollmentEnrolledAt: undefined, initialValues: {} });
+    }>({ trackedEntityId: "", initialValues: {} });
     const { formData } = useBuildForm({ dataStoreData, programData, module: Modules.Admission, schoolCalendar });
     const { hide, show } = useShowAlerts()
     const setRefetch = useSetRecoilState(TableDataRefetch);
@@ -133,16 +130,10 @@ function AdmissionActionsButtons({
 
     const onSelectTeiForEnrollment = (payload: {
         trackedEntityId: string;
-        enrollmentId?: string;
-        activeEnrollmentToComplete?: string;
-        activeEnrollmentEnrolledAt?: string;
         initialValues?: Record<string, any>;
     }) => {
         setEnrollStudentData({
             trackedEntityId: payload.trackedEntityId,
-            enrollmentId: payload.enrollmentId,
-            activeEnrollmentToComplete: payload.activeEnrollmentToComplete,
-            activeEnrollmentEnrolledAt: payload.activeEnrollmentEnrolledAt,
             initialValues: payload.initialValues ?? {},
         });
         setOpenEnrollSingleModal(true);
@@ -259,9 +250,6 @@ function AdmissionActionsButtons({
                     open={openEnrollSingleModal}
                     setOpen={setOpenEnrollSingleModal}
                     trackedEntityId={enrollStudentData.trackedEntityId}
-                    enrollmentId={enrollStudentData.enrollmentId}
-                    activeEnrollmentToComplete={enrollStudentData.activeEnrollmentToComplete}
-                    activeEnrollmentEnrolledAt={enrollStudentData.activeEnrollmentEnrolledAt}
                     defaultAcademicYear={defaultAcademicYear}
                     academicYearDataElement={academicYearDataElement}
                     initialValues={enrollStudentData.initialValues}

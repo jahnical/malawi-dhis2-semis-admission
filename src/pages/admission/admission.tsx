@@ -31,7 +31,7 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
     const [infoHistoryLoading, setInfoHistoryLoading] = useState<boolean>(false)
     const { getEvents } = useGetEvents()
     const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([])
-    const [enrollStudentData, setEnrollStudentData] = useState<{ trackedEntityId: string; enrollmentId: string; activeEnrollmentToComplete: string; activeEnrollmentEnrolledAt: string; initialValues: Record<string, any> }>({ trackedEntityId: "", enrollmentId: "", activeEnrollmentToComplete: "", activeEnrollmentEnrolledAt: "", initialValues: {} })
+    const [enrollStudentData, setEnrollStudentData] = useState<{ trackedEntityId: string; initialValues: Record<string, any> }>({ trackedEntityId: "", initialValues: {} })
     const { getData, tableData, loading } = useTableData({ module: Modules.Admission });
     const [filterState, setFilterState] = useState<{ dataElements: any, attributes: any }>({ attributes: [], dataElements: [] });
     const refetch = useRecoilValue(TableDataRefetch);
@@ -154,15 +154,10 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                 prefilledValues[f.id] = row[f.id];
             }
         });
-        // enrollableEnrollmentId: set when TEI has 1 ACTIVE enrollment with no events
-        //   -> UPDATE existing enrollment directly
-        // activeEnrollmentToComplete: set when TEI has an ACTIVE enrollment WITH events
-        //   -> COMPLETE old + CREATE new enrollment in one payload
+        // The enroll modal decides from the student's enrollments (all schools) whether to fill the
+        // admission-only enrollment or create a new one and complete the previous year.
         setEnrollStudentData({
             trackedEntityId: row?.trackedEntity,
-            enrollmentId: row?.enrollableEnrollmentId ?? "",
-            activeEnrollmentToComplete: row?.activeEnrollmentToComplete ?? "",
-            activeEnrollmentEnrolledAt: row?.activeEnrollmentEnrolledAt ?? "",
             initialValues: prefilledValues
         });
         setOpenEnrollModal(true);
@@ -357,9 +352,6 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
             .filter((row: Record<string, any>) => !row.disableSelection)
             .map((row: Record<string, any>) => ({
                 trackedEntity: row.trackedEntity,
-                enrollmentId: row.enrollableEnrollmentId,
-                activeEnrollmentToComplete: row.activeEnrollmentToComplete,
-                activeEnrollmentEnrolledAt: row.activeEnrollmentEnrolledAt,
                 attributes: attributeFields
                     .filter((field: any) => row[field.id] !== undefined)
                     .map((field: any) => ({ attribute: field.id, value: row[field.id] }))
@@ -496,9 +488,6 @@ export default function AdmissionsPage({ i18n, baseUrl }: { i18n: D2I18n, baseUr
                                 open={openEnrollModal}
                                 setOpen={setOpenEnrollModal}
                                 trackedEntityId={enrollStudentData.trackedEntityId}
-                                enrollmentId={enrollStudentData.enrollmentId}
-                                activeEnrollmentToComplete={enrollStudentData.activeEnrollmentToComplete || undefined}
-                                activeEnrollmentEnrolledAt={enrollStudentData.activeEnrollmentEnrolledAt || undefined}
                                 defaultAcademicYear={defaultCalendarAcademicYear ?? academicYear ?? undefined}
                                 academicYearDataElement={dataStoreData?.registration?.academicYear}
                                 initialValues={enrollStudentData.initialValues}
