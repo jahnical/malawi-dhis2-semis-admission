@@ -8,7 +8,7 @@ import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels } fr
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { useConfig } from "@dhis2/app-runtime";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
-import { useEnrollmentYearValidation, useShowAlerts } from 'dhis2-semis-functions';
+import { useEnrollmentYearValidation } from 'dhis2-semis-functions';
 import { useSchoolCalendarKey } from 'dhis2-semis-components';
 
 export interface SelectedStudent {
@@ -51,7 +51,6 @@ function EnrollBulkModal({
     const schoolCalendar = useSchoolCalendarKey();
     const enrollmentAcademicYearField = academicYearDataElement || dataStoreData.registration.academicYear || schoolCalendar?.academicYear;
     const validateYear = useEnrollmentYearValidation();
-    const { show } = useShowAlerts();
     const [validating, setValidating] = React.useState(false);
     const programStagesToSave = useGetUsedProgramStages({ sectionType: sectionName });
 
@@ -73,8 +72,8 @@ function EnrollBulkModal({
         setValidating(true);
         try {
             await validateYear({ students: selectedStudents, enrollmentYear: sharedValues[enrollmentAcademicYearField], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, academicYearField: enrollmentAcademicYearField, sectionType: sectionName });
-        } catch (error: any) {
-            show({ message: i18n.t(error.message), type: { critical: true } });
+        } catch {
+            // The validation hook displays the error beside the Academic Year field.
             return;
         } finally {
             setValidating(false);

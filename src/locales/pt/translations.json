@@ -13,7 +13,7 @@
     "Admission Deletion": "Eliminação de inscrição",
     "Could not conclude the opertation.": "Não foi possível concluir a operação.",
     "Operation concluded successfully": "Operação concluída com sucesso",
-    "Single {{section}} Admission {{mode}}": "Inscrição única de {{section}} {{mode}}",
+    "{{section}} Admission {{mode}}": "Inscrição de {{section}} {{mode}}",
     "Update": "Atualizar",
     "Edition": "Edição",
     "Delete": "Eliminar",
@@ -25,5 +25,7 @@
     "Staff": "Funcionário",
     "Student": "Estudante",
     "student": "estudante",
-    "staff": "funcionário"
+    "staff": "funcionário",
+    "Learner": "Estudante",
+    "learner": "estudante"
 }
