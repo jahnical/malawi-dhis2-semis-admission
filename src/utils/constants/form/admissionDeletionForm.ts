@@ -57,7 +57,7 @@ function admissionDeletionFormField({ formFieldsData, sectionName }: { formField
 
   return [
     {
-      name: `${capitalizeString(sectionName)} Profile`,
+      name: `${capitalizeString(sectionName === 'student' ? 'learner' : sectionName)} Profile`,
       visible: true,
       fields: [
         ...updatedDataProfile

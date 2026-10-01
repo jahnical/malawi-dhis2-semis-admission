@@ -93,12 +93,19 @@ function EnrollSingleModal({
         let prepared: Awaited<ReturnType<typeof planAdmissionEnrollment>>;
         try {
             await validateYear({ students: [{ trackedEntity: trackedEntityId }], enrollmentYear: e[enrollmentAcademicYearField], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, academicYearField: enrollmentAcademicYearField, sectionType: sectionName });
+        } catch {
+            // The validation hook displays the error beside the Academic Year field.
+            setValidating(false);
+            return;
+        }
+        try {
             try {
                 prepared = await planAdmissionEnrollment({ trackedEntities: [trackedEntityId], academicYear: e[enrollmentAcademicYearField], enrollmentDate: e?.enrollment_date });
             } catch {
                 throw new Error("Could not check existing enrollments. Please try again.");
             }
         } catch (error: any) {
+            // Not a field problem (the enrollment check failed), so show it as an alert
             show({ message: i18n.t(error.message), type: { critical: true } });
             return;
         } finally {
@@ -132,7 +139,7 @@ function EnrollSingleModal({
             program: programData,
             messages: {
                 error: i18n.t("Could not complete enrollment."),
-                sucess: i18n.t("Student enrolled successfully"),
+                sucess: i18n.t("Learner enrolled successfully"),
             },
             handleComplete: () => {
                 setRefetch((prev: boolean) => !prev);

@@ -101,8 +101,8 @@ function formFields({ formFieldsData, sectionName, admissionDateAttributeId, stu
       ]
     },
     {
-      name: `${capitalizeString(sectionName)} Profile`,
-      description: `${capitalizeString(sectionName)} personal details`,
+      name: `${capitalizeString(sectionName === 'student' ? 'learner' : sectionName)} Profile`,
+      description: `${capitalizeString(sectionName === 'student' ? 'learner' : sectionName)} personal details`,
       visible: true,
       fields: [
         ...processedAttributes

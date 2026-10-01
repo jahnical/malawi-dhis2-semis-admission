@@ -240,7 +240,7 @@ function ModalManager(props: ModalManagerInterface) {
             open={open}
             handleClose={handleCloseModal}
             loading={loadingCodes || initialValuesLoading}
-            title={i18n.t('Single {{section}} Admission {{mode}}', {
+            title={i18n.t('{{section}} Admission {{mode}}', {
                 section: sectionLabels.title,
                 mode: saveMode === 'UPDATE' ? i18n.t('Update') : ''
             })}
