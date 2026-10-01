@@ -42,7 +42,7 @@ function ModalManager(props: ModalManagerInterface) {
     const { getPatternCodeParams } = useGetPatternCodeParams();
     const { open, setOpen, saveMode, initialValues: initialValuesFromSearch, formFields = [], formVariablesFields, setFormInitialValues, i18n } = props;
     const sectionLabels = getSectionLabels(sectionName, i18n);
-    const { getInitialValues, initialValues: updateInitialValues, loading: initialValuesLoading } = useGetAdmissionUpdateInitialValues()
+    const { getInitialValues, initialValues: updateInitialValues, existingEnrollment, loading: initialValuesLoading } = useGetAdmissionUpdateInitialValues()
 
     const admissionDateAttrId = dataStoreData?.admission?.admissionDate;
     const studentIdentifierAttrId = dataStoreData?.admission?.studentIdentifier;
@@ -188,6 +188,7 @@ function ModalManager(props: ModalManagerInterface) {
             }
 
             if (saveMode === "UPDATE") {
+                if (!existingEnrollment?.enrollment) throw new Error(i18n.t("Could not load the admission. Please close and try again."));
                 return admissionUpdateBody({
                     formVariablesFields: formVariablesFields,
                     admissionId: formValues?.admission,
@@ -197,6 +198,8 @@ function ModalManager(props: ModalManagerInterface) {
                     orgUnitId: school!,
                     programId: programData?.id!,
                     formValues: formValues,
+                    existingEnrollment,
+                    registrationStage: dataStoreData?.registration?.programStage,
                 });
             }
         };

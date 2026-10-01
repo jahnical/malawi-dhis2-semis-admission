@@ -8,14 +8,12 @@ import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels } fr
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { useConfig } from "@dhis2/app-runtime";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
-import { useEnrollmentYearValidation } from 'dhis2-semis-functions';
+import { useEnrollmentYearValidation, useShowAlerts } from 'dhis2-semis-functions';
 import { useSchoolCalendarKey } from 'dhis2-semis-components';
+import { usePlanAdmissionEnrollment } from "../../../hooks/enrollment/usePlanAdmissionEnrollment";
 
 export interface SelectedStudent {
     trackedEntity: string;
-    enrollmentId?: string;
-    activeEnrollmentToComplete?: string;
-    activeEnrollmentEnrolledAt?: string;
     attributes: { attribute: string; value: any }[];
 }
 
@@ -51,7 +49,9 @@ function EnrollBulkModal({
     const schoolCalendar = useSchoolCalendarKey();
     const enrollmentAcademicYearField = academicYearDataElement || dataStoreData.registration.academicYear || schoolCalendar?.academicYear;
     const validateYear = useEnrollmentYearValidation();
+    const { show } = useShowAlerts();
     const [validating, setValidating] = React.useState(false);
+    const { planAdmissionEnrollment } = usePlanAdmissionEnrollment({ academicYearDataElement: enrollmentAcademicYearField, currentAcademicYear: defaultAcademicYear });
     const programStagesToSave = useGetUsedProgramStages({ sectionType: sectionName });
 
     const defaultInitialValues: Record<string, any> = {
@@ -70,17 +70,44 @@ function EnrollBulkModal({
 
     async function onSubmit(sharedValues: Record<string, any>) {
         setValidating(true);
+        const enrollmentDate = sharedValues?.enrollment_date || format(new Date(), "yyyy-MM-dd");
+        let prepared: Awaited<ReturnType<typeof planAdmissionEnrollment>>;
         try {
             await validateYear({ students: selectedStudents, enrollmentYear: sharedValues[enrollmentAcademicYearField], dataStore: dataStoreData, calendars: schoolCalendar?.schoolCalendar, programConfig: programData, academicYearField: enrollmentAcademicYearField, sectionType: sectionName });
         } catch {
             // The validation hook displays the error beside the Academic Year field.
+            setValidating(false);
+            return;
+        }
+        try {
+            try {
+                prepared = await planAdmissionEnrollment({ trackedEntities: selectedStudents.map((student) => student.trackedEntity), academicYear: sharedValues[enrollmentAcademicYearField], enrollmentDate });
+            } catch {
+                throw new Error("Could not check existing enrollments. Please try again.");
+            }
+        } catch (error: any) {
+            // Not a field problem (the enrollment check failed), so show it as an alert
+            show({ message: i18n.t(error.message), type: { critical: true } });
             return;
         } finally {
             setValidating(false);
         }
-        const enrollmentDate = sharedValues?.enrollment_date || format(new Date(), "yyyy-MM-dd");
 
-        const trackedEntities = selectedStudents.map((student) => {
+        // Students already registered for this year, or enrolled in a later one, are left out
+        const studentsToEnroll = selectedStudents.filter((student) => !prepared.plans.get(student.trackedEntity)?.conflict);
+        const skipped = selectedStudents.length - studentsToEnroll.length;
+        if (skipped > 0) {
+            show({
+                message: i18n.t("{{count}} {{section}} skipped: already registered for this academic year or enrolled in a later one.", { count: skipped, section: sectionLabels.plural }),
+                type: { warning: true },
+            });
+        }
+        if (studentsToEnroll.length === 0) return;
+        if (!prepared.calendarFound) {
+            show({ message: i18n.t("The academic year is not in the school calendar. The enrollment date is used as its start date."), type: { warning: true } });
+        }
+
+        const trackedEntities = studentsToEnroll.map((student) => {
             const payload = enrollmentPostBody({
                 values: sharedValues,
                 orgUnitId: orgUnitId!,
@@ -90,11 +117,8 @@ function EnrollBulkModal({
                 enrollmentDate,
                 trackedEntityType: programData?.trackedEntityType?.id!,
                 trackedEntityId: student.trackedEntity,
-                enrollmentId: student.enrollmentId,
-                activeEnrollmentToComplete: student.activeEnrollmentToComplete,
-                activeEnrollmentEnrolledAt: student.activeEnrollmentEnrolledAt,
-                defaultAcademicYear,
-                academicYearDataElement,
+                plan: prepared.plans.get(student.trackedEntity)!,
+                dates: prepared.dates,
             });
 
             return payload.trackedEntities[0];
@@ -106,7 +130,7 @@ function EnrollBulkModal({
             messages: {
                 error: i18n.t("Could not complete bulk enrollment."),
                 sucess: i18n.t("{{count}} {{section}} enrolled successfully", {
-                    count: selectedStudents.length,
+                    count: studentsToEnroll.length,
                     section: sectionLabels.plural,
                 }),
             },

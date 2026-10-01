@@ -1,3 +1,5 @@
+import { enrollmentsForTransition, type TransitionPlan } from "dhis2-semis-functions";
+
 const reducer = (array: any[], values: any) => {
     return array.reduce(function (r, a) {
         r[a.programStage] = (r[a.programStage]) || [];
@@ -19,14 +21,14 @@ interface enrollmentPostBodyInterface {
     formVariablesFields: any[],
     values: Record<string, any>,
     programStagesToSave: (string | undefined)[],
-    enrollmentId?: string,
-    activeEnrollmentToComplete?: string,
-    activeEnrollmentEnrolledAt?: string,
-    defaultAcademicYear?: string,
-    academicYearDataElement?: string,
+    // From planEnrollmentTransition: the admission-only enrollment to fill, the earlier
+    // ACTIVE enrollments to complete and the status of this one
+    plan: TransitionPlan,
+    // From enrollmentDates: enrolledAt is the date entered, occurredAt the academic year start
+    dates: { enrolledAt?: string, occurredAt?: string },
 }
 
-export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, enrollmentDate, programStagesToSave, trackedEntityType, trackedEntityId, values, enrollmentId, activeEnrollmentToComplete, activeEnrollmentEnrolledAt, defaultAcademicYear, academicYearDataElement }: enrollmentPostBodyInterface) => {
+export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, enrollmentDate, programStagesToSave, trackedEntityType, trackedEntityId, values, plan, dates }: enrollmentPostBodyInterface) => {
     const form: { attributes: any[], events: any[] } = {
         attributes: [],
         events: []
@@ -67,54 +69,18 @@ export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, 
         })
     })
 
-    // Determine enrollment status based on academic year:
-    // If the form's academic year matches the default (current) academic year → ACTIVE
-    // If it's for a past academic year → COMPLETED (that year has ended)
-    const formAcademicYear = academicYearDataElement ? values[academicYearDataElement] : undefined;
-    const enrollmentStatus = (defaultAcademicYear && formAcademicYear && String(formAcademicYear) !== String(defaultAcademicYear))
-        ? "COMPLETED"
-        : "ACTIVE";
-
-    // Build enrollments array based on the scenario:
-    // Scenario A: enrollmentId is set (admission-only, no events) → UPDATE existing enrollment
-    // Scenario B: activeEnrollmentToComplete is set (has events from past year)
-    //   → COMPLETE old enrollment + CREATE new enrollment in one payload
-    // Scenario C: neither set (no ACTIVE enrollment) → CREATE new enrollment
-    const enrollments: any[] = [];
-
-    if (activeEnrollmentToComplete) {
-        // First: complete the existing ACTIVE enrollment that has events from a past year
-        enrollments.push({
-            enrollment: activeEnrollmentToComplete,
+    const enrollments = enrollmentsForTransition({
+        plan,
+        trackedEntity: trackedEntityId,
+        program: programId,
+        enrollment: {
             orgUnit: orgUnitId,
-            program: programId,
-            status: "COMPLETED",
-            enrolledAt: activeEnrollmentEnrolledAt || enrollmentDate,
-            occurredAt: activeEnrollmentEnrolledAt || enrollmentDate,
-        });
-        // Second: create a new enrollment with the submitted form data
-        enrollments.push({
-            orgUnit: orgUnitId,
-            program: programId,
-            status: enrollmentStatus,
             events: form?.events?.filter(event => event.programStage !== undefined),
             attributes: form.attributes,
-            occurredAt: enrollmentDate,
-            enrolledAt: enrollmentDate,
-        });
-    } else {
-        // Single enrollment: either update existing (enrollmentId) or create new
-        enrollments.push({
-            ...(enrollmentId ? { enrollment: enrollmentId } : {}),
-            orgUnit: orgUnitId,
-            program: programId,
-            status: enrollmentStatus,
-            events: form?.events?.filter(event => event.programStage !== undefined),
-            attributes: form.attributes,
-            occurredAt: enrollmentDate,
-            enrolledAt: enrollmentDate,
-        });
-    }
+            occurredAt: dates.occurredAt ?? enrollmentDate,
+            enrolledAt: dates.enrolledAt ?? enrollmentDate,
+        },
+    });
 
     return {
         trackedEntities: [
