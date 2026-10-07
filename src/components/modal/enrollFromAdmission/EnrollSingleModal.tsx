@@ -5,7 +5,7 @@ import { useRecoilState } from "recoil";
 import { useConfig } from "@dhis2/app-runtime";
 import { TableDataRefetch } from "dhis2-semis-types";
 import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, CustomForm } from "dhis2-semis-components";
-import { useSaveTei, useUrlParams, useGetSectionTypeLabel, useGetAttributes, useGetPatternCode, RulesEngine, getSectionLabels } from "dhis2-semis-functions";
+import { useSaveTei, useUrlParams, useGetSectionTypeLabel, useGetAttributes, useGetPatternCode, RulesEngine, getSectionLabels, stageDatesForYear } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
 import { useEnrollmentYearValidation, useShowAlerts, TRANSITION_CONFLICT_MESSAGES } from 'dhis2-semis-functions';
@@ -132,6 +132,7 @@ function EnrollSingleModal({
             trackedEntityId,
             plan,
             dates: prepared.dates,
+            stageDate: stageDatesForYear(schoolCalendar?.schoolCalendar, e[enrollmentAcademicYearField], ((dataStoreData as any)?.performance?.programStages ?? []).map((x: any) => x.programStage)),
         });
 
         saveTei({

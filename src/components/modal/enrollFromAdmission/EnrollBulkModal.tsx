@@ -4,7 +4,7 @@ import { useRecoilState } from "recoil";
 import { TableDataRefetch } from "dhis2-semis-types";
 import { Form } from "react-final-form";
 import { ModalComponent, useGetUsedProgramStages, WithBorder, WithPadding, CustomForm } from "dhis2-semis-components";
-import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels } from "dhis2-semis-functions";
+import { useSaveTei, useUrlParams, useGetSectionTypeLabel, getSectionLabels, stageDatesForYear } from "dhis2-semis-functions";
 import useGetSelectedKeys from "../../../hooks/config/useGetSelectedKeys";
 import { useConfig } from "@dhis2/app-runtime";
 import { enrollmentPostBody } from "../../../utils/enrollment/formatEnrollmentPostBody";
@@ -119,6 +119,7 @@ function EnrollBulkModal({
                 trackedEntityId: student.trackedEntity,
                 plan: prepared.plans.get(student.trackedEntity)!,
                 dates: prepared.dates,
+                stageDate: stageDatesForYear(schoolCalendar?.schoolCalendar, sharedValues[enrollmentAcademicYearField], ((dataStoreData as any)?.performance?.programStages ?? []).map((x: any) => x.programStage)),
             });
 
             return payload.trackedEntities[0];

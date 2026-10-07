@@ -26,9 +26,12 @@ interface enrollmentPostBodyInterface {
     plan: TransitionPlan,
     // From enrollmentDates: enrolledAt is the date entered, occurredAt the academic year start
     dates: { enrolledAt?: string, occurredAt?: string },
+    // Date of each placeholder event (stageDatesForYear: term end, year end, never after today);
+    // without it the placeholders keep the enrollment date
+    stageDate?: (programStage?: string) => string,
 }
 
-export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, enrollmentDate, programStagesToSave, trackedEntityType, trackedEntityId, values, plan, dates }: enrollmentPostBodyInterface) => {
+export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, enrollmentDate, programStagesToSave, trackedEntityType, trackedEntityId, values, plan, dates, stageDate }: enrollmentPostBodyInterface) => {
     const form: { attributes: any[], events: any[] } = {
         attributes: [],
         events: []
@@ -63,8 +66,8 @@ export const enrollmentPostBody = ({ formVariablesFields, programId, orgUnitId, 
             notes: [],
             status: "ACTIVE",
             program: programId,
-            occurredAt: enrollmentDate,
-            scheduledAt: enrollmentDate,
+            occurredAt: stageDate?.(programStageToSave) ?? enrollmentDate,
+            scheduledAt: stageDate?.(programStageToSave) ?? enrollmentDate,
             programStage: programStageToSave,
         })
     })
